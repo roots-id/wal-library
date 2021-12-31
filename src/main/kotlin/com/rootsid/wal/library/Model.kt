@@ -3,6 +3,7 @@ package com.rootsid.wal.library
 import io.iohk.atala.prism.api.CredentialClaim
 import io.iohk.atala.prism.identity.PrismDid
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
@@ -15,6 +16,7 @@ import kotlinx.serialization.json.Json
  * @property dids
  * @constructor Create empty Wallet
  */
+@Serializable
 data class Wallet(
     val _id: String, // name
     val mnemonic: List<String>,
@@ -33,6 +35,7 @@ data class Wallet(
  * @property keyPaths
  * @constructor Create empty D i d
  */
+@Serializable
 data class DID(
     val alias: String,
     val didIdx: Int,
@@ -51,6 +54,7 @@ data class DID(
  * @property keyIdx
  * @constructor Create empty Key path
  */
+@Serializable
 data class KeyPath(
     val keyId: String,
     val didIdx: Int,
@@ -65,6 +69,7 @@ data class KeyPath(
  * @property proof
  * @constructor Create empty Verified credential
  */
+@Serializable
 data class VerifiedCredential(
     val encodedSignedCredential: String,
     val proof: String
@@ -77,6 +82,7 @@ data class VerifiedCredential(
  * @property content
  * @constructor Create empty Claim
  */
+@Serializable
 data class Claim(
     val subjectDid: String,
     val content: String
@@ -101,6 +107,7 @@ fun Claim.toCredentialClaim() = CredentialClaim(
  * @property verifiedCredential
  * @constructor Create empty Credential
  */
+@Serializable
 data class Credential(
     val _id: String,
     // Plain json claim

@@ -1,12 +1,7 @@
 package com.rootsid.wal.library
 
 import com.mongodb.client.MongoDatabase
-import org.litote.kmongo.KMongo
-import org.litote.kmongo.MongoOperator
-import org.litote.kmongo.eq
-import org.litote.kmongo.findOne
-import org.litote.kmongo.getCollection
-import org.litote.kmongo.updateOne
+import org.litote.kmongo.*
 
 /**
  * Open db
@@ -104,6 +99,6 @@ fun didAliasExists(db: MongoDatabase, walletName: String, didAlias: String): Boo
  */
 fun updateWallet(db: MongoDatabase, wallet: Wallet): Boolean {
     val collection = db.getCollection<Wallet>("wallet")
-    val result = collection.updateOne(wallet)
+    val result = collection.updateOne(wallet, upsert())
     return result.wasAcknowledged()
 }
