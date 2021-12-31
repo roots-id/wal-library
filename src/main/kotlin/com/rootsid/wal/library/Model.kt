@@ -29,7 +29,7 @@ data class Wallet(
  * @property didIdx
  * @property uriCanonical
  * @property uriLongForm
- * @property hash
+ * @property operationHash
  * @property keyPaths
  * @constructor Create empty D i d
  */
@@ -38,7 +38,7 @@ data class DID(
     val didIdx: Int,
     val uriCanonical: String,
     val uriLongForm: String,
-    var hash: String = "",
+    var operationHash: String = "",
     var keyPaths: MutableList<KeyPath> = mutableListOf()
 )
 
@@ -106,5 +106,11 @@ data class Credential(
     // Plain json claim
     val claim: Claim,
     // Signed VC and proof
-    var verifiedCredential: VerifiedCredential
+    var verifiedCredential: VerifiedCredential,
+    // Required for revocation
+    var batchId: String,
+    // Required for revocation
+    var credentialHash: String,
+    // Required for revocation
+    var operationHash: String
 )

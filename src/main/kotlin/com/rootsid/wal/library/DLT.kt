@@ -11,6 +11,7 @@ import io.iohk.atala.prism.api.node.NodePublicApi
 import io.iohk.atala.prism.common.PrismSdkInternal
 import io.iohk.atala.prism.credentials.json.JsonBasedCredential
 import io.iohk.atala.prism.crypto.MerkleInclusionProof
+import io.iohk.atala.prism.crypto.Sha256Digest
 import io.iohk.atala.prism.crypto.derivation.KeyDerivation
 import io.iohk.atala.prism.crypto.derivation.MnemonicCode
 import io.iohk.atala.prism.crypto.keys.ECKeyPair
@@ -224,7 +225,7 @@ fun publishDid(wallet: Wallet, didAlias: String): Wallet {
         require(status == AtalaOperationStatus.CONFIRMED_AND_APPLIED) {
             "expected publishing to be applied"
         }
-        did.hash = createDidInfo.operationHash.hexValue
+        did.operationHash = createDidInfo.operationHash.hexValue
         println("DID published")
         return wallet
     } else {
@@ -260,8 +261,11 @@ fun issueCredential(wallet: Wallet, didAlias: String, credential: Credential): P
             PrismDid.DEFAULT_ISSUING_KEY_ID,
             claims.toTypedArray()
         )
+        // credential batchId and hash are required for revocation
+        credential.batchId = credentialsInfo.batchId.id
         val info = credentialsInfo.credentialsAndProofs[0]
-
+        credential.credentialHash = info.signedCredential.hash().hexValue
+        credential.operationHash = credentialsInfo.operationHash.hexValue
         credential.verifiedCredential = VerifiedCredential(
             info.signedCredential.canonicalForm,
             info.inclusionProof.encode()
@@ -280,8 +284,54 @@ fun issueCredential(wallet: Wallet, didAlias: String, credential: Credential): P
         require(status == AtalaOperationStatus.CONFIRMED_AND_APPLIED) {
             "expected credentials to be issued"
         }
-        issuerDid.hash = credentialsInfo.operationHash.hexValue
+        // Update DID last operation hash
+        issuerDid.operationHash = credentialsInfo.operationHash.hexValue
         return Pair(wallet, credential)
+    } else {
+        throw NoSuchElementException("DID alias '$didAlias' not found.")
+    }
+}
+
+fun revokeCredential(wallet: Wallet, didAlias: String, credential: Credential) {
+    val didList = wallet.dids.filter { it.alias == didAlias }
+    if (didList.isNotEmpty()) {
+        val issuerDid = didList[0]
+        val nodeAuthApi = NodeAuthApiImpl(EnvVar.grpcOptions)
+        // Key pairs to get private keys
+        val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
+        val revocationKeyPair = deriveKeyPair(issuerDid.keyPaths, seed, PrismDid.DEFAULT_REVOCATION_KEY_ID)
+
+        val nodePayloadGenerator = NodePayloadGenerator(
+            PrismDid.fromString(issuerDid.uriLongForm) as LongFormPrismDid,
+            mapOf(PrismDid.DEFAULT_REVOCATION_KEY_ID to revocationKeyPair.privateKey)
+        )
+
+        val revokeInfo = nodePayloadGenerator.revokeCredentials(
+            PrismDid.DEFAULT_REVOCATION_KEY_ID,
+            Sha256Digest.fromHex(credential.operationHash),
+            credential.batchId,
+            // Pass empty array to revoke all credentials from the batch
+            arrayOf(Sha256Digest.fromHex(credential.credentialHash))
+        )
+
+        val revokeOperationId = runBlocking {
+            nodeAuthApi.revokeCredentials(
+                revokeInfo.payload,
+                PrismDid.fromString(issuerDid.uriCanonical).asCanonical(),
+                PrismDid.DEFAULT_REVOCATION_KEY_ID,
+                Sha256Digest.fromHex(credential.operationHash),
+                credential.batchId,
+                arrayOf(Sha256Digest.fromHex(credential.credentialHash))
+            )
+        }
+        waitUntilConfirmed(nodeAuthApi, revokeOperationId)
+
+        val status = runBlocking { nodeAuthApi.getOperationStatus(revokeOperationId) }
+        require(status == AtalaOperationStatus.CONFIRMED_AND_APPLIED) {
+            "expected credential to be revoked"
+        }
+        // Update DID last operation hash TODO: Ask IOG why there is no operation hash for revocation
+        // issuerDid.hash = revokeInfo.operationHash.hexValue
     } else {
         throw NoSuchElementException("DID alias '$didAlias' not found.")
     }
