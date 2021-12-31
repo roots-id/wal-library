@@ -21,6 +21,7 @@ import io.iohk.atala.prism.identity.PrismDidDataModel
 import io.iohk.atala.prism.identity.PrismKeyType
 import io.iohk.atala.prism.protos.GetOperationInfoRequest
 import io.iohk.atala.prism.protos.GrpcClient
+import io.iohk.atala.prism.protos.GrpcOptions
 import io.iohk.atala.prism.protos.NodeServiceCoroutine
 import kotlinx.coroutines.runBlocking
 import pbandk.ByteArr
@@ -33,7 +34,7 @@ import pbandk.ByteArr
  */
 @OptIn(PrismSdkInternal::class)
 private fun transactionId(oid: AtalaOperationId): String {
-    val node = NodeServiceCoroutine.Client(GrpcClient(EnvVar.grpcOptions))
+    val node = NodeServiceCoroutine.Client(GrpcClient(GrpcConfig.options))
     val response = runBlocking {
         node.GetOperationInfo(GetOperationInfoRequest(ByteArr(oid.value())))
     }
@@ -163,7 +164,7 @@ fun getDidDocument(wallet: Wallet, didAlias: String): PrismDidDataModel {
     val didList = wallet.dids.filter { it.alias == didAlias }
     if (didList.isNotEmpty()) {
         val did = didList[0]
-        val nodeAuthApi = NodeAuthApiImpl(EnvVar.grpcOptions)
+        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
         val prismDid = try {
             PrismDid.fromString(did.uriLongForm)
         } catch (e: Exception) {
@@ -194,7 +195,7 @@ fun publishDid(wallet: Wallet, didAlias: String): Wallet {
     val didList = wallet.dids.filter { it.alias == didAlias }
     if (didList.isNotEmpty()) {
         val did = didList[0]
-        val nodeAuthApi = NodeAuthApiImpl(EnvVar.grpcOptions)
+        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
         val prismDid = PrismDid.fromString(did.uriLongForm)
         // Key pairs to get private keys
         val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
@@ -245,7 +246,7 @@ fun issueCredential(wallet: Wallet, didAlias: String, credential: Credential): P
     val didList = wallet.dids.filter { it.alias == didAlias }
     if (didList.isNotEmpty()) {
         val issuerDid = didList[0]
-        val nodeAuthApi = NodeAuthApiImpl(EnvVar.grpcOptions)
+        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
         val claims = mutableListOf<CredentialClaim>()
         // Key pairs to get private keys
         val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
@@ -296,7 +297,7 @@ fun revokeCredential(wallet: Wallet, didAlias: String, credential: Credential) {
     val didList = wallet.dids.filter { it.alias == didAlias }
     if (didList.isNotEmpty()) {
         val issuerDid = didList[0]
-        val nodeAuthApi = NodeAuthApiImpl(EnvVar.grpcOptions)
+        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
         // Key pairs to get private keys
         val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
         val revocationKeyPair = deriveKeyPair(issuerDid.keyPaths, seed, PrismDid.DEFAULT_REVOCATION_KEY_ID)
@@ -344,11 +345,19 @@ fun revokeCredential(wallet: Wallet, didAlias: String, credential: Credential) {
  * @return
  */
 fun verifyCredential(credential: Credential): VerificationResult {
-    val nodeAuthApi = NodeAuthApiImpl(EnvVar.grpcOptions)
+    val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
     val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
     val proof = MerkleInclusionProof.decode(credential.verifiedCredential.proof)
 
     return runBlocking {
         nodeAuthApi.verify(signed, proof)
+    }
+}
+
+class GrpcConfig {
+    companion object {
+        private val host: String = System.getenv("PRISM_NODE_HOST")
+        private val port: String = System.getenv("PRISM_NODE_PORT") ?: "50053"
+        val options = GrpcOptions("https", host, port.toInt())
     }
 }
