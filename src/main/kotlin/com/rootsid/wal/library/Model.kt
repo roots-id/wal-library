@@ -3,6 +3,7 @@ package com.rootsid.wal.library
 import io.iohk.atala.prism.api.CredentialClaim
 import io.iohk.atala.prism.identity.PrismDid
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
@@ -15,6 +16,7 @@ import kotlinx.serialization.json.Json
  * @property dids
  * @constructor Create empty Wallet
  */
+@Serializable
 data class Wallet(
     val _id: String, // name
     val mnemonic: List<String>,
@@ -30,16 +32,17 @@ data class Wallet(
  * @property uriCanonical
  * @property uriLongForm
  * @property operationHash
- * @property keyPaths
+ * @property keyPairs
  * @constructor Create empty D i d
  */
+@Serializable
 data class DID(
     val alias: String,
     val didIdx: Int,
     val uriCanonical: String,
     val uriLongForm: String,
     var operationHash: String = "",
-    var keyPaths: MutableList<KeyPath> = mutableListOf()
+    var keyPairs: MutableList<KeyPair> = mutableListOf()
 )
 
 /**
@@ -51,11 +54,14 @@ data class DID(
  * @property keyIdx
  * @constructor Create empty Key path
  */
-data class KeyPath(
+@Serializable
+data class KeyPair(
     val keyId: String,
     val didIdx: Int,
     val keyType: Int,
-    val keyIdx: Int
+    val keyIdx: Int,
+    val privateKey: String,
+    val publicKey: String
 )
 
 /**
@@ -65,6 +71,7 @@ data class KeyPath(
  * @property proof
  * @constructor Create empty Verified credential
  */
+@Serializable
 data class VerifiedCredential(
     val encodedSignedCredential: String,
     val proof: String
@@ -77,6 +84,7 @@ data class VerifiedCredential(
  * @property content
  * @constructor Create empty Claim
  */
+@Serializable
 data class Claim(
     val subjectDid: String,
     val content: String
@@ -101,11 +109,12 @@ fun Claim.toCredentialClaim() = CredentialClaim(
  * @property verifiedCredential
  * @constructor Create empty Credential
  */
+@Serializable
 data class Credential(
     val _id: String,
     // Plain json claim
     val claim: Claim,
-    // Signed VC and proof
+    // Signed VC and proof (This is the real VC)
     var verifiedCredential: VerifiedCredential,
     // Required for revocation
     var batchId: String,

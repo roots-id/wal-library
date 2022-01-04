@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "1.6.10"
+    kotlin("plugin.serialization") version "1.6.10"
     id("maven-publish")
 }
 
@@ -22,6 +23,8 @@ repositories {
 
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.6.10")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
 
     implementation("org.litote.kmongo:kmongo:4.4.0")
 
