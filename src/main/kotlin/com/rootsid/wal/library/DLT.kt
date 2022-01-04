@@ -70,13 +70,13 @@ private fun waitUntilConfirmed(nodePublicApi: NodePublicApi, operationId: AtalaO
 /**
  * Derive key pair
  *
- * @param keyPaths
+ * @param keyPairs
  * @param seed
  * @param keyId
  * @return
  */
-private fun deriveKeyPair(keyPaths: MutableList<KeyPath>, seed: ByteArray, keyId: String): ECKeyPair {
-    val keyPathList = keyPaths.filter { it.keyId == keyId }
+private fun deriveKeyPair(keyPairs: MutableList<KeyPair>, seed: ByteArray, keyId: String): ECKeyPair {
+    val keyPathList = keyPairs.filter { it.keyId == keyId }
     if (keyPathList.isNotEmpty()) {
         val keyPath = keyPathList[0]
         return KeyGenerator.deriveKeyFromFullPath(seed, keyPath.didIdx, keyPath.keyType, keyPath.keyIdx)
@@ -119,28 +119,46 @@ fun newWallet(name: String, mnemonic: String, passphrase: String): Wallet {
 fun newDid(wallet: Wallet, didAlias: String, issuer: Boolean): Wallet {
     // To keep DID index sequential
     val didIdx = wallet.dids.size
-    val keyPaths = mutableListOf<KeyPath>()
-    val masterKeyPathData = KeyPath(PrismDid.DEFAULT_MASTER_KEY_ID, didIdx, PrismKeyType.MASTER_KEY, 0)
-
+    val keyPairs = mutableListOf<KeyPair>()
     val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
     val masterKeyPair = KeyGenerator.deriveKeyFromFullPath(
-        seed, masterKeyPathData.didIdx, masterKeyPathData.keyType, masterKeyPathData.keyIdx
+        seed, didIdx, PrismKeyType.MASTER_KEY, 0
     )
-    keyPaths.add(masterKeyPathData)
+    val masterKeyPairData = KeyPair(
+        PrismDid.DEFAULT_MASTER_KEY_ID,
+        didIdx,
+        PrismKeyType.MASTER_KEY,
+        0,
+        masterKeyPair.privateKey.getHexEncoded(),
+        masterKeyPair.publicKey.getHexEncoded()
+    )
+    keyPairs.add(masterKeyPairData)
 
     val unpublishedDid = if (issuer) {
-        val issuingKeyPathData = KeyPath(PrismDid.DEFAULT_ISSUING_KEY_ID, didIdx, PrismKeyType.ISSUING_KEY, 0)
-        val revocationKeyPathData = KeyPath(PrismDid.DEFAULT_REVOCATION_KEY_ID, didIdx, PrismKeyType.REVOCATION_KEY, 0)
-
-        keyPaths.add(issuingKeyPathData)
-        keyPaths.add(revocationKeyPathData)
-
         val issuingKeyPair = KeyGenerator.deriveKeyFromFullPath(
-            seed, issuingKeyPathData.didIdx, issuingKeyPathData.keyType, issuingKeyPathData.keyIdx
+            seed, didIdx, PrismKeyType.ISSUING_KEY, 0
         )
         val revocationKeyPair = KeyGenerator.deriveKeyFromFullPath(
-            seed, revocationKeyPathData.didIdx, revocationKeyPathData.keyType, revocationKeyPathData.keyIdx
+            seed, didIdx, PrismKeyType.REVOCATION_KEY, 0
         )
+        val issuingKeyPairData = KeyPair(
+            PrismDid.DEFAULT_ISSUING_KEY_ID,
+            didIdx,
+            PrismKeyType.ISSUING_KEY,
+            0,
+            issuingKeyPair.privateKey.getHexEncoded(),
+            issuingKeyPair.publicKey.getHexEncoded()
+        )
+        val revocationKeyPairData = KeyPair(
+            PrismDid.DEFAULT_REVOCATION_KEY_ID,
+            didIdx, PrismKeyType.REVOCATION_KEY,
+            0,
+            revocationKeyPair.privateKey.getHexEncoded(),
+            revocationKeyPair.publicKey.getHexEncoded()
+        )
+        keyPairs.add(issuingKeyPairData)
+        keyPairs.add(revocationKeyPairData)
+
         PrismDid.buildExperimentalLongFormFromKeys(
             masterKeyPair.publicKey, issuingKeyPair.publicKey, revocationKeyPair.publicKey
         )
@@ -148,7 +166,7 @@ fun newDid(wallet: Wallet, didAlias: String, issuer: Boolean): Wallet {
         PrismDid.buildLongFormFromMasterPublicKey(masterKeyPair.publicKey)
     }
     wallet.dids.add(
-        DID(didAlias, didIdx, unpublishedDid.asCanonical().did.toString(), unpublishedDid.did.toString(), "", keyPaths)
+        DID(didAlias, didIdx, unpublishedDid.asCanonical().did.toString(), unpublishedDid.did.toString(), "", keyPairs)
     )
     return wallet
 }
@@ -199,9 +217,9 @@ fun publishDid(wallet: Wallet, didAlias: String): Wallet {
         val prismDid = PrismDid.fromString(did.uriLongForm)
         // Key pairs to get private keys
         val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
-        val masterKeyPair = deriveKeyPair(did.keyPaths, seed, PrismDid.DEFAULT_MASTER_KEY_ID)
-        val issuingKeyPair = deriveKeyPair(did.keyPaths, seed, PrismDid.DEFAULT_ISSUING_KEY_ID)
-        val revocationKeyPair = deriveKeyPair(did.keyPaths, seed, PrismDid.DEFAULT_REVOCATION_KEY_ID)
+        val masterKeyPair = deriveKeyPair(did.keyPairs, seed, PrismDid.DEFAULT_MASTER_KEY_ID)
+        val issuingKeyPair = deriveKeyPair(did.keyPairs, seed, PrismDid.DEFAULT_ISSUING_KEY_ID)
+        val revocationKeyPair = deriveKeyPair(did.keyPairs, seed, PrismDid.DEFAULT_REVOCATION_KEY_ID)
 
         val nodePayloadGenerator = NodePayloadGenerator(
             prismDid as LongFormPrismDid,
@@ -250,7 +268,7 @@ fun issueCredential(wallet: Wallet, didAlias: String, credential: Credential): P
         val claims = mutableListOf<CredentialClaim>()
         // Key pairs to get private keys
         val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
-        val issuingKeyPair = deriveKeyPair(issuerDid.keyPaths, seed, PrismDid.DEFAULT_ISSUING_KEY_ID)
+        val issuingKeyPair = deriveKeyPair(issuerDid.keyPairs, seed, PrismDid.DEFAULT_ISSUING_KEY_ID)
 
         claims.add(credential.claim.toCredentialClaim())
 
@@ -300,7 +318,7 @@ fun revokeCredential(wallet: Wallet, didAlias: String, credential: Credential) {
         val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
         // Key pairs to get private keys
         val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
-        val revocationKeyPair = deriveKeyPair(issuerDid.keyPaths, seed, PrismDid.DEFAULT_REVOCATION_KEY_ID)
+        val revocationKeyPair = deriveKeyPair(issuerDid.keyPairs, seed, PrismDid.DEFAULT_REVOCATION_KEY_ID)
 
         val nodePayloadGenerator = NodePayloadGenerator(
             PrismDid.fromString(issuerDid.uriLongForm) as LongFormPrismDid,

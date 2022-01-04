@@ -32,7 +32,7 @@ data class Wallet(
  * @property uriCanonical
  * @property uriLongForm
  * @property operationHash
- * @property keyPaths
+ * @property keyPairs
  * @constructor Create empty D i d
  */
 @Serializable
@@ -42,7 +42,7 @@ data class DID(
     val uriCanonical: String,
     val uriLongForm: String,
     var operationHash: String = "",
-    var keyPaths: MutableList<KeyPath> = mutableListOf()
+    var keyPairs: MutableList<KeyPair> = mutableListOf()
 )
 
 /**
@@ -55,11 +55,13 @@ data class DID(
  * @constructor Create empty Key path
  */
 @Serializable
-data class KeyPath(
+data class KeyPair(
     val keyId: String,
     val didIdx: Int,
     val keyType: Int,
-    val keyIdx: Int
+    val keyIdx: Int,
+    val privateKey: String,
+    val publicKey: String
 )
 
 /**
@@ -112,7 +114,7 @@ data class Credential(
     val _id: String,
     // Plain json claim
     val claim: Claim,
-    // Signed VC and proof
+    // Signed VC and proof (This is the real VC)
     var verifiedCredential: VerifiedCredential,
     // Required for revocation
     var batchId: String,
