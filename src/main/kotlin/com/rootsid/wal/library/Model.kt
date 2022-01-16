@@ -123,3 +123,10 @@ data class Credential(
     // Required for revocation
     var operationHash: String
 )
+
+data class UnpackResult(
+    val message: String,
+    val from: String?,
+    val to: String,
+    val res: org.didcommx.didcomm.model.UnpackResult
+)

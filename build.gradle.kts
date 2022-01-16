@@ -43,6 +43,10 @@ dependencies {
     implementation("org.boofcv:boofcv-kotlin:0.39.1")
     implementation("org.boofcv:boofcv-WebcamCapture:0.39.1")
 
+    // DIDComm
+    implementation("org.didcommx:didcomm:0.3.0")
+    implementation("org.didcommx:peerdid:0.2.0")
+
     implementation("org.junit.jupiter:junit-jupiter:5.8.2")
 }
 
