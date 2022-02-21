@@ -21,7 +21,8 @@ data class Wallet(
     val _id: String, // name
     val mnemonic: List<String>,
     val passphrase: String,
-    var dids: MutableList<DID> = mutableListOf()
+    var dids: MutableList<DID> = mutableListOf(),
+    var credentials: MutableList<Credential> = mutableListOf()
 )
 
 /**
@@ -61,7 +62,8 @@ data class KeyPair(
     val keyType: Int,
     val keyIdx: Int,
     val privateKey: String,
-    val publicKey: String
+    val publicKey: String,
+    var revoked: Boolean = false
 )
 
 /**

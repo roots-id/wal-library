@@ -15,10 +15,7 @@ import io.iohk.atala.prism.crypto.Sha256Digest
 import io.iohk.atala.prism.crypto.derivation.KeyDerivation
 import io.iohk.atala.prism.crypto.derivation.MnemonicCode
 import io.iohk.atala.prism.crypto.keys.ECKeyPair
-import io.iohk.atala.prism.identity.LongFormPrismDid
-import io.iohk.atala.prism.identity.PrismDid
-import io.iohk.atala.prism.identity.PrismDidDataModel
-import io.iohk.atala.prism.identity.PrismKeyType
+import io.iohk.atala.prism.identity.*
 import io.iohk.atala.prism.protos.GetOperationInfoRequest
 import io.iohk.atala.prism.protos.GrpcClient
 import io.iohk.atala.prism.protos.GrpcOptions
@@ -252,6 +249,117 @@ fun publishDid(wallet: Wallet, didAlias: String): Wallet {
     }
 }
 
+fun addKey(wallet: Wallet, didAlias: String, keyId: String, keyType: Int): Wallet {
+    val didList = wallet.dids.filter { it.alias == didAlias }
+    if (didList.isNotEmpty()) {
+        val did = didList[0]
+        val keyIdx = did.keyPairs.filter { it.keyType == keyType }.size
+        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
+
+        // Key pairs to get private keys
+        val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
+        // TODO: masterKey index 0 may be revoked, do something to indicate the currently valid masterKey
+        val masterKeyPair = KeyGenerator.deriveKeyFromFullPath(seed, did.didIdx, PrismKeyType.MASTER_KEY, 0)
+        val newKeyPair = KeyGenerator.deriveKeyFromFullPath(seed, did.didIdx, keyType, keyIdx)
+
+        val newKeyPairData = KeyPair(
+            keyId,
+            did.didIdx,
+            keyType,
+            keyIdx,
+            newKeyPair.privateKey.getHexEncoded(),
+            newKeyPair.publicKey.getHexEncoded()
+        )
+        val nodePayloadGenerator = NodePayloadGenerator(
+            PrismDid.fromString(did.uriLongForm) as LongFormPrismDid,
+            mapOf(PrismDid.DEFAULT_MASTER_KEY_ID to masterKeyPair.privateKey)
+        )
+        val newKeyInfo = PrismKeyInformation(
+            keyId,
+            keyType,
+            newKeyPair.publicKey
+        )
+        val updateDidInfo = nodePayloadGenerator.updateDid(
+            previousHash = Sha256Digest.fromHex(did.operationHash),
+            masterKeyId = PrismDid.DEFAULT_MASTER_KEY_ID,
+            keysToAdd = arrayOf(newKeyInfo)
+        )
+        val updateDidOperationId = runBlocking {
+            nodeAuthApi.updateDid(
+                payload = updateDidInfo.payload,
+                did = PrismDid.fromString(did.uriCanonical).asCanonical(),
+                masterKeyId = PrismDid.DEFAULT_MASTER_KEY_ID,
+                previousOperationHash = Sha256Digest.fromHex(did.operationHash),
+                keysToAdd = arrayOf(newKeyInfo),
+                keysToRevoke = arrayOf()
+            )
+        }
+        waitUntilConfirmed(nodeAuthApi, updateDidOperationId)
+
+        val response = runBlocking { nodeAuthApi.getOperationInfo(updateDidOperationId) }
+        require(response.status == AtalaOperationStatus.CONFIRMED_AND_APPLIED) {
+            "expected did to be updated: $response"
+        }
+        // Update DID last operation hash
+        did.operationHash = updateDidInfo.operationHash.hexValue
+        did.keyPairs.add(newKeyPairData)
+        return wallet
+    } else {
+        throw NoSuchElementException("DID alias '$didAlias' not found.")
+    }
+}
+
+fun revokeKey(wallet: Wallet, didAlias: String, keyId: String): Wallet {
+    val didList = wallet.dids.filter { it.alias == didAlias }
+    if (didList.isNotEmpty()) {
+        val did = didList[0]
+        var keyPairList = did.keyPairs.filter { it.keyId == keyId }
+        if (keyPairList.isNotEmpty()) {
+            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
+
+            // Key pairs to get private keys
+            val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
+            // TODO: masterKey index 0 may be revoked, do something to indicate the currently valid masterKey
+            val masterKeyPair = KeyGenerator.deriveKeyFromFullPath(seed, did.didIdx, PrismKeyType.MASTER_KEY, 0)
+
+            val nodePayloadGenerator = NodePayloadGenerator(
+                PrismDid.fromString(did.uriLongForm) as LongFormPrismDid,
+                mapOf(PrismDid.DEFAULT_MASTER_KEY_ID to masterKeyPair.privateKey)
+            )
+            val updateDidInfo = nodePayloadGenerator.updateDid(
+                previousHash = Sha256Digest.fromHex(did.operationHash),
+                masterKeyId = PrismDid.DEFAULT_MASTER_KEY_ID,
+                keysToRevoke = arrayOf(keyId)
+            )
+            val updateDidOperationId = runBlocking {
+                nodeAuthApi.updateDid(
+                    payload = updateDidInfo.payload,
+                    did = PrismDid.fromString(did.uriCanonical).asCanonical(),
+                    masterKeyId = PrismDid.DEFAULT_MASTER_KEY_ID,
+                    previousOperationHash = Sha256Digest.fromHex(did.operationHash),
+                    keysToAdd = arrayOf(),
+                    keysToRevoke = arrayOf(keyId)
+                )
+            }
+            waitUntilConfirmed(nodeAuthApi, updateDidOperationId)
+
+            val response = runBlocking { nodeAuthApi.getOperationInfo(updateDidOperationId) }
+            require(response.status == AtalaOperationStatus.CONFIRMED_AND_APPLIED) {
+                "expected did to be updated: $response"
+            }
+            // Key revocation flag
+            keyPairList[0].revoked = true
+            // Update DID last operation hash
+            did.operationHash = updateDidInfo.operationHash.hexValue
+            return wallet
+        } else {
+            throw NoSuchElementException("Key identifier '$keyId' not found.")
+        }
+    } else {
+        throw NoSuchElementException("DID alias '$didAlias' not found.")
+    }
+}
+
 /**
  * Issue credential
  *
@@ -345,7 +453,7 @@ fun revokeCredential(wallet: Wallet, didAlias: String, credential: Credential) {
         }
         waitUntilConfirmed(nodeAuthApi, revokeOperationId)
 
-        val status = runBlocking { nodeAuthApi.getOperationStatus(revokeOperationId) }
+        val status = runBlocking { nodeAuthApi.getOperationInfo(revokeOperationId).status }
         require(status == AtalaOperationStatus.CONFIRMED_AND_APPLIED) {
             "expected credential to be revoked"
         }
