@@ -17,7 +17,7 @@ fun createPeerDID(
     authKeysCount: Int = 1,
     agreementKeysCount: Int = 1,
     serviceEndpoint: String? = null,
-    serviceRoutingKeys: List<String>? = null,
+    serviceRoutingKeys: List<String>,
     secretResolver: SecretResolver
 ): String {
     // 1. generate keys in JWK format

@@ -38,20 +38,18 @@ class DIDDocResolverPeerDID : DIDDocResolver {
                         )
                     )
                 },
-                didCommServices = didDoc.service
-                    ?.map {
-                        when (it) {
-                            is DIDCommServicePeerDID ->
-                                DIDCommService(
-                                    id = it.id,
-                                    serviceEndpoint = it.serviceEndpoint ?: "",
-                                    routingKeys = it.routingKeys ?: emptyList(),
-                                    accept = it.accept ?: emptyList()
-                                )
-                            else -> null
-                        }
+                didCommServices = didDoc.service?.mapNotNull {
+                    when (it) {
+                        is DIDCommServicePeerDID ->
+                            DIDCommService(
+                                id = it.id,
+                                serviceEndpoint = it.serviceEndpoint,
+                                routingKeys = it.routingKeys,
+                                accept = it.accept
+                            )
+                        else -> null
                     }
-                    ?.filterNotNull()
+                }
                     ?: emptyList()
             )
         )
