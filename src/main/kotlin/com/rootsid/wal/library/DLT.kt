@@ -100,7 +100,7 @@ fun newWallet(name: String, mnemonic: String, passphrase: String): Wallet {
             KeyDerivation.binarySeed(MnemonicCode(mnemonicList), passphrase)
             Wallet(name, mnemonicList, passphrase)
         } catch (e: Exception) {
-            throw IllegalArgumentException("Invalid mnemonic phrase")
+            throw Exception("Invalid mnemonic phrase")
         }
     }
 }
@@ -237,12 +237,11 @@ fun publishDid(wallet: Wallet, didAlias: String): Wallet {
         }
         waitUntilConfirmed(nodeAuthApi, createDidOperationId)
 
-        val status = runBlocking { nodeAuthApi.getOperationStatus(createDidOperationId) }
-        require(status == AtalaOperationStatus.CONFIRMED_AND_APPLIED) {
-            "expected publishing to be applied"
+        val response = runBlocking { nodeAuthApi.getOperationInfo(createDidOperationId) }
+        require(response.status == AtalaOperationStatus.CONFIRMED_AND_APPLIED) {
+            "expected publishing to be applied: ${response.statusDetails}"
         }
         did.operationHash = createDidInfo.operationHash.hexValue
-        println("DID published")
         return wallet
     } else {
         throw NoSuchElementException("DID alias '$didAlias' not found.")

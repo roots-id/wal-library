@@ -2,23 +2,26 @@ package com.rootsid.wal.library
 
 import com.mongodb.client.MongoDatabase
 import org.litote.kmongo.*
+import pbandk.FieldDescriptor
 
 /**
  * Open db
- * TODO: Add Parameters for Client configuration.
- * @return
+ *
+ * @return a MongoDatabase representing 'wal' database
  */
 fun openDb(): MongoDatabase {
+    // TODO: make this configurable so it can use other connection settings
     val client = KMongo.createClient() // get com.mongodb.MongoClient new instance
+    // TODO: make databaseName configurable
     return client.getDatabase("wal") // normal java driver usage
 }
 
 /**
  * Insert wallet
  *
- * @param db
- * @param wallet
- * @return
+ * @param db MongoDB Client
+ * @param wallet Wallet data object to add into the database
+ * @return true if the operation was acknowledged
  */
 fun insertWallet(db: MongoDatabase, wallet: Wallet): Boolean {
     val collection = db.getCollection<Wallet>("wallet")
@@ -29,9 +32,9 @@ fun insertWallet(db: MongoDatabase, wallet: Wallet): Boolean {
 /**
  * Insert credential
  *
- * @param db
- * @param credential
- * @return
+ * @param db MongoDB Client
+ * @param credential Credential data object to add into the database
+ * @return true if the operation was acknowledged
  */
 fun insertCredential(db: MongoDatabase, credential: Credential): Boolean {
     val collection = db.getCollection<Credential>("credential")
@@ -42,9 +45,9 @@ fun insertCredential(db: MongoDatabase, credential: Credential): Boolean {
 /**
  * Find wallet
  *
- * @param db
- * @param walletName
- * @return
+ * @param db MongoDB Client
+ * @param walletName name of the wallet to find
+ * @return true if the wallet was found
  */
 fun findWallet(db: MongoDatabase, walletName: String): Wallet {
     val collection = db.getCollection<Wallet>("wallet")
@@ -55,9 +58,9 @@ fun findWallet(db: MongoDatabase, walletName: String): Wallet {
 /**
  * Find credential
  *
- * @param db
- * @param credentialAlias
- * @return
+ * @param db MongoDB Client
+ * @param credentialAlias alias of the credential to find
+ * @return true if the credential was found
  */
 fun findCredential(db: MongoDatabase, credentialAlias: String): Credential {
     val collection = db.getCollection<Credential>("credential")
@@ -66,23 +69,36 @@ fun findCredential(db: MongoDatabase, credentialAlias: String): Credential {
 }
 
 /**
- * Find wallets
+ * List wallets
  *
- * @param db
- * @return
+ * @param db MongoDB Client
+ * @return list of stored wallet names
  */
-fun findWallets(db: MongoDatabase): List<Wallet> {
+fun listWallets(db: MongoDatabase): List<Wallet> {
     val collection = db.getCollection<Wallet>("wallet")
     return collection.find().toList()
 }
 
 /**
+ * Wallet exists
+ *
+ * @param db MongoDB Client
+ * @param walletName name of the wallet to find
+ * @return true if the wallet was found
+ */
+fun walletExists(db: MongoDatabase, walletName: String): Boolean {
+    val collection = db.getCollection<Wallet>("wallet")
+    val wallet = collection.findOne("{_id:'$walletName'}")
+    return wallet != null
+}
+
+/**
  * Did alias exists
  *
- * @param db
- * @param walletName
- * @param didAlias
- * @return
+ * @param db MongoDB Client
+ * @param walletName name of the wallet storing the did
+ * @param didAlias alias of the did
+ * @return true if the did was found
  */
 fun didAliasExists(db: MongoDatabase, walletName: String, didAlias: String): Boolean {
     val collection = db.getCollection<Wallet>("wallet")
@@ -93,9 +109,9 @@ fun didAliasExists(db: MongoDatabase, walletName: String, didAlias: String): Boo
 /**
  * Update wallet
  *
- * @param db
- * @param wallet
- * @return
+ * @param db MongoDB Client
+ * @param wallet updated Wallet data object
+ * @return true if the operation was acknowledged
  */
 fun updateWallet(db: MongoDatabase, wallet: Wallet): Boolean {
     val collection = db.getCollection<Wallet>("wallet")
