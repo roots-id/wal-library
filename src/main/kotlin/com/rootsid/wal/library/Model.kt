@@ -22,7 +22,9 @@ data class Wallet(
     val mnemonic: List<String>,
     val passphrase: String,
     var dids: MutableList<DID> = mutableListOf(),
-    var credentials: MutableList<Credential> = mutableListOf()
+    var credentials: MutableList<VerifiedCredential> = mutableListOf(),
+    var issuedCredentials: MutableList<Credential> = mutableListOf()
+
 )
 
 /**
@@ -113,7 +115,7 @@ fun Claim.toCredentialClaim() = CredentialClaim(
  */
 @Serializable
 data class Credential(
-    val _id: String,
+    val alias: String,
     // Plain json claim
     val claim: Claim,
     // Signed VC and proof (This is the real VC)

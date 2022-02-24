@@ -367,7 +367,7 @@ fun revokeKey(wallet: Wallet, didAlias: String, keyId: String): Wallet {
  * @param credential
  * @return
  */
-fun issueCredential(wallet: Wallet, didAlias: String, credential: Credential): Pair<Wallet, Credential> {
+fun issueCredential(wallet: Wallet, didAlias: String, credential: Credential): Wallet {
     val didList = wallet.dids.filter { it.alias == didAlias }
     if (didList.isNotEmpty()) {
         val issuerDid = didList[0]
@@ -412,7 +412,8 @@ fun issueCredential(wallet: Wallet, didAlias: String, credential: Credential): P
         }
         // Update DID last operation hash
         issuerDid.operationHash = credentialsInfo.operationHash.hexValue
-        return Pair(wallet, credential)
+        wallet.issuedCredentials.add(credential)
+        return wallet
     } else {
         throw NoSuchElementException("DID alias '$didAlias' not found.")
     }
