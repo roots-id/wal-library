@@ -22,7 +22,9 @@ data class Wallet(
     val mnemonic: List<String>,
     val passphrase: String,
     var dids: MutableList<DID> = mutableListOf(),
+    // List of imported (Issued elsewhere)
     var credentials: MutableList<VerifiedCredential> = mutableListOf(),
+    // List of credentials issued by a DID from this wallet
     var issuedCredentials: MutableList<Credential> = mutableListOf()
 
 )
@@ -78,7 +80,14 @@ data class KeyPair(
 @Serializable
 data class VerifiedCredential(
     val encodedSignedCredential: String,
-    val proof: String
+    val proof: Proof
+)
+
+@Serializable
+data class Proof(
+    var hash: String,
+    var index: Int,
+    var siblings: MutableList<String> = mutableListOf()
 )
 
 /**
@@ -108,14 +117,20 @@ fun Claim.toCredentialClaim() = CredentialClaim(
 /**
  * Credential
  *
- * @property _id
+ * @property alias
+ * @property issuingDidAlias
  * @property claim
  * @property verifiedCredential
+ * @property batchId
+ * @property credentialHash
+ * @property operationHash
+ * @property revoked
  * @constructor Create empty Credential
  */
 @Serializable
 data class Credential(
     val alias: String,
+    var issuingDidAlias: String,
     // Plain json claim
     val claim: Claim,
     // Signed VC and proof (This is the real VC)
@@ -125,7 +140,8 @@ data class Credential(
     // Required for revocation
     var credentialHash: String,
     // Required for revocation
-    var operationHash: String
+    var operationHash: String,
+    var revoked: Boolean
 )
 
 data class UnpackResult(

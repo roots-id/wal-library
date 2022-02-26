@@ -2,7 +2,6 @@ package com.rootsid.wal.library
 
 import com.mongodb.client.MongoDatabase
 import org.litote.kmongo.*
-import pbandk.FieldDescriptor
 
 /**
  * Open db
@@ -30,19 +29,6 @@ fun insertWallet(db: MongoDatabase, wallet: Wallet): Boolean {
 }
 
 /**
- * Insert credential
- *
- * @param db MongoDB Client
- * @param credential Credential data object to add into the database
- * @return true if the operation was acknowledged
- */
-//fun insertCredential(db: MongoDatabase, credential: Credential): Boolean {
-//    val collection = db.getCollection<Credential>("credential")
-//    val result = collection.insertOne(credential)
-//    return result.wasAcknowledged()
-//}
-
-/**
  * Find wallet
  *
  * @param db MongoDB Client
@@ -53,22 +39,6 @@ fun findWallet(db: MongoDatabase, walletName: String): Wallet {
     val collection = db.getCollection<Wallet>("wallet")
     return collection.findOne(Wallet::_id eq walletName)
         ?: throw NoSuchElementException("Wallet '$walletName' not found.")
-}
-
-/**
- * Find issued credential
- *
- * @param db MongoDB Client
- * @param walletName name of the wallet to find
- * @param credentialAlias alias of the credential to find
- * @return true if the credential was found
- */
-fun findIssuedCredential(db: MongoDatabase, walletName: String, credentialAlias: String): Credential {
-    val collection = db.getCollection<Wallet>("wallet")
-    println("{_id:'$walletName','issuedCredentials':{${MongoOperator.elemMatch}: {'alias':'$credentialAlias'}}}")
-    val credential =  collection.findOne("{_id:'$walletName','issuedCredentials':{${MongoOperator.elemMatch}: {'alias':'$credentialAlias'}}}")
-        ?: throw NoSuchElementException("Credential '$credentialAlias' not found.")
-    return credential.issuedCredentials.filter { it.alias == credentialAlias }[0]
 }
 
 /**
@@ -113,12 +83,25 @@ fun didAliasExists(db: MongoDatabase, walletName: String, didAlias: String): Boo
  * Issued credential alias exists
  *
  * @param db MongoDB Client
- * @param issuedCredentialAlias credential alias to find of the did
+ * @param issuedCredentialAlias credential alias to find
  * @return true if the did was found
  */
 fun issuedCredentialAliasExists(db: MongoDatabase, walletName: String, issuedCredentialAlias: String): Boolean {
     val collection = db.getCollection<Wallet>("wallet")
     val wallet = collection.findOne("{_id:'$walletName','issuedCredentials':{${MongoOperator.elemMatch}: {'alias':'$issuedCredentialAlias'}}}")
+    return wallet != null
+}
+
+/**
+ * Credential alias exists
+ *
+ * @param db MongoDB Client
+ * @param credentialAlias credential alias to find
+ * @return true if the did was found
+ */
+fun credentialAliasExists(db: MongoDatabase, walletName: String, credentialAlias: String): Boolean {
+    val collection = db.getCollection<Wallet>("wallet")
+    val wallet = collection.findOne("{_id:'$walletName','credentials':{${MongoOperator.elemMatch}: {'alias':'$credentialAlias'}}}")
     return wallet != null
 }
 

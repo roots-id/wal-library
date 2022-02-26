@@ -21,6 +21,9 @@ import io.iohk.atala.prism.protos.GrpcClient
 import io.iohk.atala.prism.protos.GrpcOptions
 import io.iohk.atala.prism.protos.NodeServiceCoroutine
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import pbandk.ByteArr
 
 /**
@@ -312,7 +315,7 @@ fun revokeKey(wallet: Wallet, didAlias: String, keyId: String): Wallet {
     val didList = wallet.dids.filter { it.alias == didAlias }
     if (didList.isNotEmpty()) {
         val did = didList[0]
-        var keyPairList = did.keyPairs.filter { it.keyId == keyId }
+        val keyPairList = did.keyPairs.filter { it.keyId == keyId }
         if (keyPairList.isNotEmpty()) {
             val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
 
@@ -392,9 +395,10 @@ fun issueCredential(wallet: Wallet, didAlias: String, credential: Credential): W
         val info = credentialsInfo.credentialsAndProofs[0]
         credential.credentialHash = info.signedCredential.hash().hexValue
         credential.operationHash = credentialsInfo.operationHash.hexValue
+        credential.issuingDidAlias = didAlias
         credential.verifiedCredential = VerifiedCredential(
             info.signedCredential.canonicalForm,
-            info.inclusionProof.encode()
+            Json.decodeFromString<Proof>(info.inclusionProof.encode())
         )
         val issueCredentialsOperationId = runBlocking {
             nodeAuthApi.issueCredentials(
@@ -419,64 +423,74 @@ fun issueCredential(wallet: Wallet, didAlias: String, credential: Credential): W
     }
 }
 
-fun revokeCredential(wallet: Wallet, didAlias: String, credential: Credential) {
-    val didList = wallet.dids.filter { it.alias == didAlias }
-    if (didList.isNotEmpty()) {
-        val issuerDid = didList[0]
-        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
-        // Key pairs to get private keys
-        val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
-        val revocationKeyPair = deriveKeyPair(issuerDid.keyPairs, seed, PrismDid.DEFAULT_REVOCATION_KEY_ID)
+fun revokeCredential(wallet: Wallet, credentialAlias: String): Wallet {
+    val credentials = wallet.issuedCredentials.filter { it.alias == credentialAlias }
+    if (credentials.isNotEmpty()) {
+        val credential = credentials[0]
+        val didList = wallet.dids.filter { it.alias == credential.issuingDidAlias }
+        if (didList.isNotEmpty()) {
+            val issuerDid = didList[0]
+            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
+            // Key pairs to get private keys
+            val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
+            val revocationKeyPair = deriveKeyPair(issuerDid.keyPairs, seed, PrismDid.DEFAULT_REVOCATION_KEY_ID)
 
-        val nodePayloadGenerator = NodePayloadGenerator(
-            PrismDid.fromString(issuerDid.uriLongForm) as LongFormPrismDid,
-            mapOf(PrismDid.DEFAULT_REVOCATION_KEY_ID to revocationKeyPair.privateKey)
-        )
+            val nodePayloadGenerator = NodePayloadGenerator(
+                PrismDid.fromString(issuerDid.uriLongForm) as LongFormPrismDid,
+                mapOf(PrismDid.DEFAULT_REVOCATION_KEY_ID to revocationKeyPair.privateKey)
+            )
 
-        val revokeInfo = nodePayloadGenerator.revokeCredentials(
-            PrismDid.DEFAULT_REVOCATION_KEY_ID,
-            Sha256Digest.fromHex(credential.operationHash),
-            credential.batchId,
-            // Pass empty array to revoke all credentials from the batch
-            arrayOf(Sha256Digest.fromHex(credential.credentialHash))
-        )
-
-        val revokeOperationId = runBlocking {
-            nodeAuthApi.revokeCredentials(
-                revokeInfo.payload,
-                PrismDid.fromString(issuerDid.uriCanonical).asCanonical(),
+            val revokeInfo = nodePayloadGenerator.revokeCredentials(
                 PrismDid.DEFAULT_REVOCATION_KEY_ID,
                 Sha256Digest.fromHex(credential.operationHash),
                 credential.batchId,
+                // Pass empty array to revoke all credentials from the batch
                 arrayOf(Sha256Digest.fromHex(credential.credentialHash))
             )
-        }
-        waitUntilConfirmed(nodeAuthApi, revokeOperationId)
 
-        val status = runBlocking { nodeAuthApi.getOperationInfo(revokeOperationId).status }
-        require(status == AtalaOperationStatus.CONFIRMED_AND_APPLIED) {
-            "expected credential to be revoked"
+            val revokeOperationId = runBlocking {
+                nodeAuthApi.revokeCredentials(
+                    revokeInfo.payload,
+                    PrismDid.fromString(issuerDid.uriCanonical).asCanonical(),
+                    PrismDid.DEFAULT_REVOCATION_KEY_ID,
+                    Sha256Digest.fromHex(credential.operationHash),
+                    credential.batchId,
+                    arrayOf(Sha256Digest.fromHex(credential.credentialHash))
+                )
+            }
+            waitUntilConfirmed(nodeAuthApi, revokeOperationId)
+
+            val status = runBlocking { nodeAuthApi.getOperationInfo(revokeOperationId).status }
+            require(status == AtalaOperationStatus.CONFIRMED_AND_APPLIED) {
+                "expected credential to be revoked"
+            }
+            credential.revoked = true
+            return wallet
+            // Update DID last operation hash TODO: Ask IOG why there is no operation hash for revocation
+            // issuerDid.hash = revokeInfo.operationHash.hexValue
+        } else {
+            throw NoSuchElementException("Issuing DID not found.")
         }
-        // Update DID last operation hash TODO: Ask IOG why there is no operation hash for revocation
-        // issuerDid.hash = revokeInfo.operationHash.hexValue
     } else {
-        throw NoSuchElementException("DID alias '$didAlias' not found.")
+        throw NoSuchElementException("Credential '$credentialAlias' not found.")
     }
 }
 
-/**
- * Verify credential
- *
- * @param credential
- * @return
- */
-fun verifyCredential(credential: Credential): VerificationResult {
-    val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
-    val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
-    val proof = MerkleInclusionProof.decode(credential.verifiedCredential.proof)
+fun verifyCredential(wallet: Wallet, credentialAlias: String): VerificationResult {
+    val credentials = wallet.issuedCredentials.filter { it.alias == credentialAlias }
+    if (credentials.isNotEmpty()) {
+        val credential = credentials[0]
+        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
+        val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
+        // Use encodeDefaults to generate empty siblings field on proof
+        val format = Json { encodeDefaults = true }
+        val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
 
-    return runBlocking {
-        nodeAuthApi.verify(signed, proof)
+        return runBlocking {
+            nodeAuthApi.verify(signed, proof)
+        }
+    } else {
+        throw Exception("Credential '$credentialAlias' not found.")
     }
 }
 
