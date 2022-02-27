@@ -12,7 +12,7 @@ fun openDb(): MongoDatabase {
     // TODO: make this configurable so it can use other connection settings
     val client = KMongo.createClient() // get com.mongodb.MongoClient new instance
     // TODO: make databaseName configurable
-    return client.getDatabase("wal") // normal java driver usage
+    return client.getDatabase(Config.DB_NAME) // normal java driver usage
 }
 
 /**
