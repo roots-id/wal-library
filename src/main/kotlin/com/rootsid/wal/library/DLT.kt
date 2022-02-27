@@ -29,8 +29,8 @@ import pbandk.ByteArr
 /**
  * Transaction id
  *
- * @param oid
- * @return
+ * @param oid operation identifier
+ * @return transaction Id
  */
 @OptIn(PrismSdkInternal::class)
 private fun transactionId(oid: AtalaOperationId): String {
@@ -44,13 +44,13 @@ private fun transactionId(oid: AtalaOperationId): String {
 /**
  * Wait until confirmed
  *
- * @param nodePublicApi
- * @param operationId
+ * @param nodePublicApi PRISM node
+ * @param operationId operation Identifier
  */
 private fun waitUntilConfirmed(nodePublicApi: NodePublicApi, operationId: AtalaOperationId) {
     var tid = ""
     var status = runBlocking {
-        nodePublicApi.getOperationStatus(operationId)
+        nodePublicApi.getOperationInfo(operationId).status
     }
     while (status != AtalaOperationStatus.CONFIRMED_AND_APPLIED &&
         status != AtalaOperationStatus.CONFIRMED_AND_REJECTED
@@ -62,7 +62,7 @@ private fun waitUntilConfirmed(nodePublicApi: NodePublicApi, operationId: AtalaO
         println("Current operation status: ${AtalaOperationStatus.asString(status)}\n")
         Thread.sleep(10000)
         status = runBlocking {
-            nodePublicApi.getOperationStatus(operationId)
+            nodePublicApi.getOperationInfo(operationId).status
         }
     }
 }
@@ -70,10 +70,10 @@ private fun waitUntilConfirmed(nodePublicApi: NodePublicApi, operationId: AtalaO
 /**
  * Derive key pair
  *
- * @param keyPairs
- * @param seed
- * @param keyId
- * @return
+ * @param keyPairs List containing key path information
+ * @param seed seed
+ * @param keyId Id of the key to derive
+ * @return Key pair
  */
 private fun deriveKeyPair(keyPairs: MutableList<KeyPair>, seed: ByteArray, keyId: String): ECKeyPair {
     val keyPathList = keyPairs.filter { it.keyId == keyId }
@@ -88,10 +88,10 @@ private fun deriveKeyPair(keyPairs: MutableList<KeyPair>, seed: ByteArray, keyId
 /**
  * New wallet
  *
- * @param name
- * @param mnemonic
- * @param passphrase
- * @return
+ * @param name Wallet name
+ * @param mnemonic mnemonic, leave empty to generate a random one
+ * @param passphrase passphrase
+ * @return a new wallet
  */
 fun newWallet(name: String, mnemonic: String, passphrase: String): Wallet {
     return if (mnemonic.isBlank()) {
@@ -111,10 +111,10 @@ fun newWallet(name: String, mnemonic: String, passphrase: String): Wallet {
 /**
  * New did
  *
- * @param wallet
- * @param didAlias
- * @param issuer
- * @return
+ * @param wallet Wallet to store the DID
+ * @param didAlias Alias for the new DID
+ * @param issuer If true issuing and holder keys are included, otherwise only a master key pair is added
+ * @return updated wallet
  */
 fun newDid(wallet: Wallet, didAlias: String, issuer: Boolean): Wallet {
     // To keep DID index sequential
@@ -174,9 +174,9 @@ fun newDid(wallet: Wallet, didAlias: String, issuer: Boolean): Wallet {
 /**
  * Get did document
  *
- * @param wallet
- * @param didAlias
- * @return
+ * @param wallet Wallet containing the DID
+ * @param didAlias Alias of the DID
+ * @return DID document
  */
 fun getDidDocument(wallet: Wallet, didAlias: String): PrismDidDataModel {
     val didList = wallet.dids.filter { it.alias == didAlias }
@@ -205,9 +205,9 @@ fun getDidDocument(wallet: Wallet, didAlias: String): PrismDidDataModel {
 /**
  * Publish did
  *
- * @param wallet
- * @param didAlias
- * @return
+ * @param wallet Wallet contining the DID
+ * @param didAlias Alias of the DID
+ * @return updated wallet
  */
 fun publishDid(wallet: Wallet, didAlias: String): Wallet {
     val didList = wallet.dids.filter { it.alias == didAlias }
@@ -251,6 +251,15 @@ fun publishDid(wallet: Wallet, didAlias: String): Wallet {
     }
 }
 
+/**
+ * Add key
+ *
+ * @param wallet Wallet containing the DID
+ * @param didAlias Alias of DID where the key will be added
+ * @param keyId Key identifier for the new key
+ * @param keyType Type of key (master, issuing or revocation)
+ * @return updated wallet
+ */
 fun addKey(wallet: Wallet, didAlias: String, keyId: String, keyType: Int): Wallet {
     val didList = wallet.dids.filter { it.alias == didAlias }
     if (didList.isNotEmpty()) {
@@ -311,6 +320,14 @@ fun addKey(wallet: Wallet, didAlias: String, keyId: String, keyType: Int): Walle
     }
 }
 
+/**
+ * Revoke key
+ *
+ * @param wallet Wallet containing the DID
+ * @param didAlias Alias of DID containing the key
+ * @param keyId Identifier of the key to be revoked
+ * @return updated wallet
+ */
 fun revokeKey(wallet: Wallet, didAlias: String, keyId: String): Wallet {
     val didList = wallet.dids.filter { it.alias == didAlias }
     if (didList.isNotEmpty()) {
@@ -365,12 +382,12 @@ fun revokeKey(wallet: Wallet, didAlias: String, keyId: String): Wallet {
 /**
  * Issue credential
  *
- * @param wallet
- * @param didAlias
- * @param credential
- * @return
+ * @param wallet Wallet issuing the credential
+ * @param didAlias Issuer DID
+ * @param issuedCredential Credential data
+ * @return updated wallet
  */
-fun issueCredential(wallet: Wallet, didAlias: String, credential: Credential): Wallet {
+fun issueCredential(wallet: Wallet, didAlias: String, issuedCredential: IssuedCredential): Wallet {
     val didList = wallet.dids.filter { it.alias == didAlias }
     if (didList.isNotEmpty()) {
         val issuerDid = didList[0]
@@ -380,7 +397,7 @@ fun issueCredential(wallet: Wallet, didAlias: String, credential: Credential): W
         val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
         val issuingKeyPair = deriveKeyPair(issuerDid.keyPairs, seed, PrismDid.DEFAULT_ISSUING_KEY_ID)
 
-        claims.add(credential.claim.toCredentialClaim())
+        claims.add(issuedCredential.claim.toCredentialClaim())
 
         val nodePayloadGenerator = NodePayloadGenerator(
             PrismDid.fromString(issuerDid.uriLongForm) as LongFormPrismDid,
@@ -391,12 +408,12 @@ fun issueCredential(wallet: Wallet, didAlias: String, credential: Credential): W
             claims.toTypedArray()
         )
         // credential batchId and hash are required for revocation
-        credential.batchId = credentialsInfo.batchId.id
+        issuedCredential.batchId = credentialsInfo.batchId.id
         val info = credentialsInfo.credentialsAndProofs[0]
-        credential.credentialHash = info.signedCredential.hash().hexValue
-        credential.operationHash = credentialsInfo.operationHash.hexValue
-        credential.issuingDidAlias = didAlias
-        credential.verifiedCredential = VerifiedCredential(
+        issuedCredential.credentialHash = info.signedCredential.hash().hexValue
+        issuedCredential.operationHash = credentialsInfo.operationHash.hexValue
+        issuedCredential.issuingDidAlias = didAlias
+        issuedCredential.verifiedCredential = VerifiedCredential(
             info.signedCredential.canonicalForm,
             Json.decodeFromString<Proof>(info.inclusionProof.encode())
         )
@@ -410,19 +427,26 @@ fun issueCredential(wallet: Wallet, didAlias: String, credential: Credential): W
         }
         waitUntilConfirmed(nodeAuthApi, issueCredentialsOperationId)
 
-        val status = runBlocking { nodeAuthApi.getOperationStatus(issueCredentialsOperationId) }
-        require(status == AtalaOperationStatus.CONFIRMED_AND_APPLIED) {
+        val response = runBlocking { nodeAuthApi.getOperationInfo(issueCredentialsOperationId) }
+        require(response.status == AtalaOperationStatus.CONFIRMED_AND_APPLIED) {
             "expected credentials to be issued"
         }
         // Update DID last operation hash
         issuerDid.operationHash = credentialsInfo.operationHash.hexValue
-        wallet.issuedCredentials.add(credential)
+        wallet.issuedCredentials.add(issuedCredential)
         return wallet
     } else {
         throw NoSuchElementException("DID alias '$didAlias' not found.")
     }
 }
 
+/**
+ * Revoke credential
+ *
+ * @param wallet Wallet containing the credential
+ * @param credentialAlias Alias of credential to revoke
+ * @return Updated wallet
+ */
 fun revokeCredential(wallet: Wallet, credentialAlias: String): Wallet {
     val credentials = wallet.issuedCredentials.filter { it.alias == credentialAlias }
     if (credentials.isNotEmpty()) {
@@ -439,7 +463,6 @@ fun revokeCredential(wallet: Wallet, credentialAlias: String): Wallet {
                 PrismDid.fromString(issuerDid.uriLongForm) as LongFormPrismDid,
                 mapOf(PrismDid.DEFAULT_REVOCATION_KEY_ID to revocationKeyPair.privateKey)
             )
-
             val revokeInfo = nodePayloadGenerator.revokeCredentials(
                 PrismDid.DEFAULT_REVOCATION_KEY_ID,
                 Sha256Digest.fromHex(credential.operationHash),
@@ -447,7 +470,6 @@ fun revokeCredential(wallet: Wallet, credentialAlias: String): Wallet {
                 // Pass empty array to revoke all credentials from the batch
                 arrayOf(Sha256Digest.fromHex(credential.credentialHash))
             )
-
             val revokeOperationId = runBlocking {
                 nodeAuthApi.revokeCredentials(
                     revokeInfo.payload,
@@ -466,8 +488,6 @@ fun revokeCredential(wallet: Wallet, credentialAlias: String): Wallet {
             }
             credential.revoked = true
             return wallet
-            // Update DID last operation hash TODO: Ask IOG why there is no operation hash for revocation
-            // issuerDid.hash = revokeInfo.operationHash.hexValue
         } else {
             throw NoSuchElementException("Issuing DID not found.")
         }
@@ -476,7 +496,15 @@ fun revokeCredential(wallet: Wallet, credentialAlias: String): Wallet {
     }
 }
 
-fun verifyCredential(wallet: Wallet, credentialAlias: String): VerificationResult {
+/**
+ * Verify issued credential
+ *
+ * @param wallet Wallet containing the credential
+ * @param credentialAlias Alias of Credential to verify
+ * @return Verification result
+ */
+// TODO: refactor to a single verifyCredential function
+fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): VerificationResult {
     val credentials = wallet.issuedCredentials.filter { it.alias == credentialAlias }
     if (credentials.isNotEmpty()) {
         val credential = credentials[0]
@@ -494,6 +522,37 @@ fun verifyCredential(wallet: Wallet, credentialAlias: String): VerificationResul
     }
 }
 
+/**
+ * Verify imported credential
+ *
+ * @param wallet Wallet containing the credential
+ * @param credentialAlias Alias of credential to verify
+ * @return Verification result
+ */
+// TODO: refactor to a single verifyCredential function
+fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): VerificationResult {
+    val credentials = wallet.importedCredentials.filter { it.alias == credentialAlias }
+    if (credentials.isNotEmpty()) {
+        val credential = credentials[0]
+        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
+        val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
+        // Use encodeDefaults to generate empty siblings field on proof
+        val format = Json { encodeDefaults = true }
+        val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
+
+        return runBlocking {
+            nodeAuthApi.verify(signed, proof)
+        }
+    } else {
+        throw Exception("Credential '$credentialAlias' not found.")
+    }
+}
+
+/**
+ * Grpc config
+ *
+ * @constructor Create empty Grpc config
+ */
 class GrpcConfig {
     companion object {
         private val host: String = System.getenv("PRISM_NODE_HOST")

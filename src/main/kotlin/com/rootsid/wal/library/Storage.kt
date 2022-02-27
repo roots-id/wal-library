@@ -80,6 +80,21 @@ fun didAliasExists(db: MongoDatabase, walletName: String, didAlias: String): Boo
 }
 
 /**
+ * Key id exists
+ *
+ * @param db MongoDB Client
+ * @param walletName name of the wallet storing the did
+ * @param didAlias alias of the did
+ * @param keyId key identifier
+ * @return true if the keyId was found
+ */
+fun keyIdExists(db: MongoDatabase, walletName: String, didAlias: String, keyId: String): Boolean {
+    val collection = db.getCollection<Wallet>("wallet")
+    val wallet = collection.findOne("{_id:'$walletName','dids':{${MongoOperator.elemMatch}: {'alias':'$didAlias'}}, 'dids.keyPairs.keyId':'$keyId'}")
+    return wallet != null
+}
+
+/**
  * Issued credential alias exists
  *
  * @param db MongoDB Client

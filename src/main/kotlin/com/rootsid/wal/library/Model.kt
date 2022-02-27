@@ -14,6 +14,8 @@ import kotlinx.serialization.json.Json
  * @property mnemonic
  * @property passphrase
  * @property dids
+ * @property importedCredentials
+ * @property issuedCredentials
  * @constructor Create empty Wallet
  */
 @Serializable
@@ -23,10 +25,9 @@ data class Wallet(
     val passphrase: String,
     var dids: MutableList<DID> = mutableListOf(),
     // List of imported (Issued elsewhere)
-    var credentials: MutableList<VerifiedCredential> = mutableListOf(),
+    var importedCredentials: MutableList<ImportedCredential> = mutableListOf(),
     // List of credentials issued by a DID from this wallet
-    var issuedCredentials: MutableList<Credential> = mutableListOf()
-
+    var issuedCredentials: MutableList<IssuedCredential> = mutableListOf()
 )
 
 /**
@@ -51,13 +52,16 @@ data class DID(
 )
 
 /**
- * Key path
+ * Key pair
  *
  * @property keyId
  * @property didIdx
  * @property keyType
  * @property keyIdx
- * @constructor Create empty Key path
+ * @property privateKey
+ * @property publicKey
+ * @property revoked
+ * @constructor Create empty Key pair
  */
 @Serializable
 data class KeyPair(
@@ -83,6 +87,14 @@ data class VerifiedCredential(
     val proof: Proof
 )
 
+/**
+ * Proof
+ *
+ * @property hash
+ * @property index
+ * @property siblings
+ * @constructor Create empty Proof
+ */
 @Serializable
 data class Proof(
     var hash: String,
@@ -128,7 +140,7 @@ fun Claim.toCredentialClaim() = CredentialClaim(
  * @constructor Create empty Credential
  */
 @Serializable
-data class Credential(
+data class IssuedCredential(
     val alias: String,
     var issuingDidAlias: String,
     // Plain json claim
@@ -144,6 +156,29 @@ data class Credential(
     var revoked: Boolean
 )
 
+/**
+ * Imported credential
+ *
+ * @property alias
+ * @property verifiedCredential
+ * @constructor Create empty Imported credential
+ */
+@Serializable
+data class ImportedCredential(
+    val alias: String,
+    // Signed VC and proof (This is the real VC)
+    var verifiedCredential: VerifiedCredential,
+)
+
+/**
+ * Unpack result
+ *
+ * @property message
+ * @property from
+ * @property to
+ * @property res
+ * @constructor Create empty Unpack result
+ */
 data class UnpackResult(
     val message: String,
     val from: String?,
