@@ -57,7 +57,7 @@ private fun waitUntilConfirmed(nodePublicApi: NodePublicApi, operationId: AtalaO
     ) {
         if (status == AtalaOperationStatus.AWAIT_CONFIRMATION && tid.isEmpty()) {
             tid = transactionId(operationId)
-            println("Track the transaction in:\n- ${Constant.TESTNET_URL}$tid\n")
+            println("Track the transaction in:\n- ${Config.TESTNET_URL}$tid\n")
         }
         println("Current operation status: ${AtalaOperationStatus.asString(status)}\n")
         Thread.sleep(10000)
@@ -98,7 +98,7 @@ fun newWallet(name: String, mnemonic: String, passphrase: String): Wallet {
         Wallet(name, KeyDerivation.randomMnemonicCode().words, passphrase)
     } else {
         try {
-            val mnemonicList = mnemonic.split(Constant.MNEMONIC_SEPARATOR)
+            val mnemonicList = mnemonic.split(Config.MNEMONIC_SEPARATOR)
                 .map { it.trim() }
             KeyDerivation.binarySeed(MnemonicCode(mnemonicList), passphrase)
             Wallet(name, mnemonicList, passphrase)
@@ -188,15 +188,7 @@ fun getDidDocument(wallet: Wallet, didAlias: String): PrismDidDataModel {
         } catch (e: Exception) {
             throw Exception("not a Prism DID: $did")
         }
-        println("trying to retrieve document for $did\n")
-        try {
-            val model = runBlocking { nodeAuthApi.getDidDocument(prismDid) }
-            println("Public Keys size: ${model.publicKeys.size}\n")
-            println("Model: ${model.didDataModel}\n")
-            return model
-        } catch (e: Exception) {
-            throw NoSuchElementException("DID '$didAlias' not found.")
-        }
+        return runBlocking { nodeAuthApi.getDidDocument(prismDid) }
     } else {
         throw NoSuchElementException("DID '$didAlias' not found.")
     }
