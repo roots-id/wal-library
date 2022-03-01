@@ -20,7 +20,7 @@ import kotlinx.serialization.json.Json
  */
 @Serializable
 data class Wallet(
-    val _id: String, // name
+    var _id: String, // name
     val mnemonic: List<String>,
     val passphrase: String,
     var dids: MutableList<DID> = mutableListOf(),

@@ -33,7 +33,7 @@ fun insertWallet(db: MongoDatabase, wallet: Wallet): Boolean {
  *
  * @param db MongoDB Client
  * @param walletName name of the wallet to find
- * @return true if the wallet was found
+ * @return wallet data object
  */
 fun findWallet(db: MongoDatabase, walletName: String): Wallet {
     val collection = db.getCollection<Wallet>("wallet")
