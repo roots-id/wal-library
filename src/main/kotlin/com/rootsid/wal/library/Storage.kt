@@ -38,7 +38,7 @@ fun insertWallet(db: MongoDatabase, wallet: Wallet): Boolean {
 fun findWallet(db: MongoDatabase, walletName: String): Wallet {
     val collection = db.getCollection<Wallet>("wallet")
     return collection.findOne(Wallet::_id eq walletName)
-        ?: throw NoSuchElementException("Wallet '$walletName' not found.")
+        ?: throw Exception("Wallet '$walletName' not found.")
 }
 
 /**
