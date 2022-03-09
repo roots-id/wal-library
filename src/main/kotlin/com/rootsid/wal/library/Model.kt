@@ -14,14 +14,20 @@ import kotlinx.serialization.json.Json
  * @property mnemonic
  * @property passphrase
  * @property dids
+ * @property importedCredentials
+ * @property issuedCredentials
  * @constructor Create empty Wallet
  */
 @Serializable
 data class Wallet(
-    val _id: String, // name
+    var _id: String, // name
     val mnemonic: List<String>,
     val passphrase: String,
-    var dids: MutableList<DID> = mutableListOf()
+    var dids: MutableList<DID> = mutableListOf(),
+    // List of imported (Issued elsewhere)
+    var importedCredentials: MutableList<ImportedCredential> = mutableListOf(),
+    // List of credentials issued by a DID from this wallet
+    var issuedCredentials: MutableList<IssuedCredential> = mutableListOf()
 )
 
 /**
@@ -46,13 +52,16 @@ data class DID(
 )
 
 /**
- * Key path
+ * Key pair
  *
  * @property keyId
  * @property didIdx
  * @property keyType
  * @property keyIdx
- * @constructor Create empty Key path
+ * @property privateKey
+ * @property publicKey
+ * @property revoked
+ * @constructor Create empty Key pair
  */
 @Serializable
 data class KeyPair(
@@ -61,7 +70,8 @@ data class KeyPair(
     val keyType: Int,
     val keyIdx: Int,
     val privateKey: String,
-    val publicKey: String
+    val publicKey: String,
+    var revoked: Boolean = false
 )
 
 /**
@@ -74,7 +84,22 @@ data class KeyPair(
 @Serializable
 data class VerifiedCredential(
     val encodedSignedCredential: String,
-    val proof: String
+    val proof: Proof
+)
+
+/**
+ * Proof
+ *
+ * @property hash
+ * @property index
+ * @property siblings
+ * @constructor Create empty Proof
+ */
+@Serializable
+data class Proof(
+    var hash: String,
+    var index: Int,
+    var siblings: MutableList<String> = mutableListOf()
 )
 
 /**
@@ -104,14 +129,20 @@ fun Claim.toCredentialClaim() = CredentialClaim(
 /**
  * Credential
  *
- * @property _id
+ * @property alias
+ * @property issuingDidAlias
  * @property claim
  * @property verifiedCredential
+ * @property batchId
+ * @property credentialHash
+ * @property operationHash
+ * @property revoked
  * @constructor Create empty Credential
  */
 @Serializable
-data class Credential(
-    val _id: String,
+data class IssuedCredential(
+    val alias: String,
+    var issuingDidAlias: String,
     // Plain json claim
     val claim: Claim,
     // Signed VC and proof (This is the real VC)
@@ -121,5 +152,36 @@ data class Credential(
     // Required for revocation
     var credentialHash: String,
     // Required for revocation
-    var operationHash: String
+    var operationHash: String,
+    var revoked: Boolean
+)
+
+/**
+ * Imported credential
+ *
+ * @property alias
+ * @property verifiedCredential
+ * @constructor Create empty Imported credential
+ */
+@Serializable
+data class ImportedCredential(
+    val alias: String,
+    // Signed VC and proof (This is the real VC)
+    var verifiedCredential: VerifiedCredential,
+)
+
+/**
+ * Unpack result
+ *
+ * @property message
+ * @property from
+ * @property to
+ * @property res
+ * @constructor Create empty Unpack result
+ */
+data class UnpackResult(
+    val message: String,
+    val from: String?,
+    val to: String,
+    val res: org.didcommx.didcomm.model.UnpackResult
 )

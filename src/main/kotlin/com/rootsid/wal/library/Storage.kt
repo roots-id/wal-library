@@ -5,20 +5,22 @@ import org.litote.kmongo.*
 
 /**
  * Open db
- * TODO: Add Parameters for Client configuration.
- * @return
+ *
+ * @return a MongoDatabase representing 'wal' database
  */
 fun openDb(): MongoDatabase {
+    // TODO: make this configurable so it can use other connection settings
     val client = KMongo.createClient() // get com.mongodb.MongoClient new instance
-    return client.getDatabase("wal") // normal java driver usage
+    // TODO: make databaseName configurable
+    return client.getDatabase(Config.DB_NAME) // normal java driver usage
 }
 
 /**
  * Insert wallet
  *
- * @param db
- * @param wallet
- * @return
+ * @param db MongoDB Client
+ * @param wallet Wallet data object to add into the database
+ * @return true if the operation was acknowledged
  */
 fun insertWallet(db: MongoDatabase, wallet: Wallet): Boolean {
     val collection = db.getCollection<Wallet>("wallet")
@@ -27,62 +29,49 @@ fun insertWallet(db: MongoDatabase, wallet: Wallet): Boolean {
 }
 
 /**
- * Insert credential
- *
- * @param db
- * @param credential
- * @return
- */
-fun insertCredential(db: MongoDatabase, credential: Credential): Boolean {
-    val collection = db.getCollection<Credential>("credential")
-    val result = collection.insertOne(credential)
-    return result.wasAcknowledged()
-}
-
-/**
  * Find wallet
  *
- * @param db
- * @param walletName
- * @return
+ * @param db MongoDB Client
+ * @param walletName name of the wallet to find
+ * @return wallet data object
  */
 fun findWallet(db: MongoDatabase, walletName: String): Wallet {
     val collection = db.getCollection<Wallet>("wallet")
     return collection.findOne(Wallet::_id eq walletName)
-        ?: throw NoSuchElementException("Wallet '$walletName' not found.")
+        ?: throw Exception("Wallet '$walletName' not found.")
 }
 
 /**
- * Find credential
+ * List wallets
  *
- * @param db
- * @param credentialAlias
- * @return
+ * @param db MongoDB Client
+ * @return list of stored wallet names
  */
-fun findCredential(db: MongoDatabase, credentialAlias: String): Credential {
-    val collection = db.getCollection<Credential>("credential")
-    return collection.findOne(Wallet::_id eq credentialAlias)
-        ?: throw NoSuchElementException("Credential '$credentialAlias' not found.")
-}
-
-/**
- * Find wallets
- *
- * @param db
- * @return
- */
-fun findWallets(db: MongoDatabase): List<Wallet> {
+fun listWallets(db: MongoDatabase): List<Wallet> {
     val collection = db.getCollection<Wallet>("wallet")
     return collection.find().toList()
 }
 
 /**
+ * Wallet exists
+ *
+ * @param db MongoDB Client
+ * @param walletName name of the wallet to find
+ * @return true if the wallet was found
+ */
+fun walletExists(db: MongoDatabase, walletName: String): Boolean {
+    val collection = db.getCollection<Wallet>("wallet")
+    val wallet = collection.findOne("{_id:'$walletName'}")
+    return wallet != null
+}
+
+/**
  * Did alias exists
  *
- * @param db
- * @param walletName
- * @param didAlias
- * @return
+ * @param db MongoDB Client
+ * @param walletName name of the wallet storing the did
+ * @param didAlias alias of the did
+ * @return true if the did was found
  */
 fun didAliasExists(db: MongoDatabase, walletName: String, didAlias: String): Boolean {
     val collection = db.getCollection<Wallet>("wallet")
@@ -91,11 +80,52 @@ fun didAliasExists(db: MongoDatabase, walletName: String, didAlias: String): Boo
 }
 
 /**
+ * Key id exists
+ *
+ * @param db MongoDB Client
+ * @param walletName name of the wallet storing the did
+ * @param didAlias alias of the did
+ * @param keyId key identifier
+ * @return true if the keyId was found
+ */
+fun keyIdExists(db: MongoDatabase, walletName: String, didAlias: String, keyId: String): Boolean {
+    val collection = db.getCollection<Wallet>("wallet")
+    val wallet = collection.findOne("{_id:'$walletName','dids':{${MongoOperator.elemMatch}: {'alias':'$didAlias'}}, 'dids.keyPairs.keyId':'$keyId'}")
+    return wallet != null
+}
+
+/**
+ * Issued credential alias exists
+ *
+ * @param db MongoDB Client
+ * @param issuedCredentialAlias credential alias to find
+ * @return true if the did was found
+ */
+fun issuedCredentialAliasExists(db: MongoDatabase, walletName: String, issuedCredentialAlias: String): Boolean {
+    val collection = db.getCollection<Wallet>("wallet")
+    val wallet = collection.findOne("{_id:'$walletName','issuedCredentials':{${MongoOperator.elemMatch}: {'alias':'$issuedCredentialAlias'}}}")
+    return wallet != null
+}
+
+/**
+ * Credential alias exists
+ *
+ * @param db MongoDB Client
+ * @param credentialAlias credential alias to find
+ * @return true if the did was found
+ */
+fun credentialAliasExists(db: MongoDatabase, walletName: String, credentialAlias: String): Boolean {
+    val collection = db.getCollection<Wallet>("wallet")
+    val wallet = collection.findOne("{_id:'$walletName','credentials':{${MongoOperator.elemMatch}: {'alias':'$credentialAlias'}}}")
+    return wallet != null
+}
+
+/**
  * Update wallet
  *
- * @param db
- * @param wallet
- * @return
+ * @param db MongoDB Client
+ * @param wallet updated Wallet data object
+ * @return true if the operation was acknowledged
  */
 fun updateWallet(db: MongoDatabase, wallet: Wallet): Boolean {
     val collection = db.getCollection<Wallet>("wallet")
