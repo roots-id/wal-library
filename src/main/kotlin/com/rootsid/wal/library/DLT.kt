@@ -450,7 +450,6 @@ fun revokeCredential(wallet: Wallet, credentialAlias: String): Wallet {
             // Key pairs to get private keys
             val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
             val revocationKeyPair = deriveKeyPair(issuerDid.keyPairs, seed, PrismDid.DEFAULT_REVOCATION_KEY_ID)
-
             val nodePayloadGenerator = NodePayloadGenerator(
                 PrismDid.fromString(issuerDid.uriLongForm) as LongFormPrismDid,
                 mapOf(PrismDid.DEFAULT_REVOCATION_KEY_ID to revocationKeyPair.privateKey)
