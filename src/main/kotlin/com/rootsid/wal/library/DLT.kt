@@ -80,7 +80,7 @@ private fun deriveKeyPair(keyPairs: MutableList<KeyPair>, seed: ByteArray, keyId
         return KeyGenerator.deriveKeyFromFullPath(
             seed,
             keyPath.didIdx,
-            PublicKeyUsage.fromProto(KeyUsage.fromValue(keyPath.keyType)),
+            PublicKeyUsage.fromProto(KeyUsage.fromValue(keyPath.keyTypeValue)),
             keyPath.keyIdx
         )
     } else {
@@ -119,6 +119,7 @@ fun newWallet(name: String, mnemonic: String, passphrase: String): Wallet {
  * @param issuer If true issuing and holder keys are included, otherwise only a master key pair is added
  * @return updated wallet
  */
+@OptIn(PrismSdkInternal::class)
 fun newDid(wallet: Wallet, didAlias: String, issuer: Boolean): Wallet {
     // To keep DID index sequential
     val didIdx = wallet.dids.size
@@ -129,6 +130,7 @@ fun newDid(wallet: Wallet, didAlias: String, issuer: Boolean): Wallet {
     )
     val masterKeyPairData = KeyPair(
         PrismDid.DEFAULT_MASTER_KEY_ID,
+        KeyUsage.MASTER_KEY.value,
         didIdx,
         MasterKeyUsage.derivationIndex(),
         0,
@@ -146,6 +148,7 @@ fun newDid(wallet: Wallet, didAlias: String, issuer: Boolean): Wallet {
         )
         val issuingKeyPairData = KeyPair(
             PrismDid.DEFAULT_ISSUING_KEY_ID,
+            KeyUsage.ISSUING_KEY.value,
             didIdx,
             IssuingKeyUsage.derivationIndex(),
             0,
@@ -154,7 +157,9 @@ fun newDid(wallet: Wallet, didAlias: String, issuer: Boolean): Wallet {
         )
         val revocationKeyPairData = KeyPair(
             PrismDid.DEFAULT_REVOCATION_KEY_ID,
-            didIdx, RevocationKeyUsage.derivationIndex(),
+            KeyUsage.REVOCATION_KEY.value,
+            didIdx,
+            RevocationKeyUsage.derivationIndex(),
             0,
             revocationKeyPair.privateKey.getHexEncoded(),
             revocationKeyPair.publicKey.getHexEncoded()
@@ -252,27 +257,33 @@ fun publishDid(wallet: Wallet, didAlias: String): Wallet {
  * @param wallet Wallet containing the DID
  * @param didAlias Alias of DID where the key will be added
  * @param keyId Key identifier for the new key
- * @param keyType Type of key (master, issuing or revocation)
+ * @param keyTypeValue Type of key (master, issuing or revocation)
  * @return updated wallet
  */
 @OptIn(PrismSdkInternal::class)
-fun addKey(wallet: Wallet, didAlias: String, keyId: String, keyType: Int): Wallet {
+fun addKey(wallet: Wallet, didAlias: String, keyId: String, keyTypeValue: Int): Wallet {
     val didList = wallet.dids.filter { it.alias == didAlias }
     if (didList.isNotEmpty()) {
         val did = didList[0]
-        val keyIdx = did.keyPairs.filter { it.keyType == keyType }.size
+        val keyIdx = did.keyPairs.filter { it.keyTypeValue == keyTypeValue }.size
         val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
 
         // Key pairs to get private keys
         val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
         // TODO: masterKey index 0 may be revoked, do something to indicate the currently valid masterKey
         val masterKeyPair = KeyGenerator.deriveKeyFromFullPath(seed, did.didIdx, MasterKeyUsage, 0)
-        val newKeyPair = KeyGenerator.deriveKeyFromFullPath(seed, did.didIdx, PublicKeyUsage.fromProto(KeyUsage.fromValue(keyType)), keyIdx)
-
+        val newKeyPair = KeyGenerator.deriveKeyFromFullPath(
+            seed,
+            did.didIdx,
+            PublicKeyUsage.fromProto(KeyUsage.fromValue(keyTypeValue)),
+            keyIdx
+        )
+        val keyUsage = KeyUsage.fromValue(keyTypeValue)
         val newKeyPairData = KeyPair(
             keyId,
+            keyTypeValue,
             did.didIdx,
-            keyType,
+            PublicKeyUsage.fromProto(keyUsage).derivationIndex(),
             keyIdx,
             newKeyPair.privateKey.getHexEncoded(),
             newKeyPair.publicKey.getHexEncoded()
@@ -282,7 +293,7 @@ fun addKey(wallet: Wallet, didAlias: String, keyId: String, keyType: Int): Walle
             mapOf(PrismDid.DEFAULT_MASTER_KEY_ID to masterKeyPair.privateKey)
         )
         val newKeyInfo = PrismKeyInformation(
-            DidPublicKey(keyId, PublicKeyUsage.fromProto(KeyUsage.fromValue(keyType)), newKeyPair.publicKey)
+            DidPublicKey(keyId, PublicKeyUsage.fromProto(keyUsage), newKeyPair.publicKey)
         )
         val updateDidInfo = nodePayloadGenerator.updateDid(
             previousHash = Sha256Digest.fromHex(did.operationHash),
