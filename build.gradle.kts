@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.rootsid.wal"
-version = "1.0.0"
+version = "1.0.1-SNAPSHOT"
 
 repositories {
     mavenCentral()
@@ -23,24 +23,24 @@ repositories {
 
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.6.10")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0-native-mt")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
-    implementation("org.litote.kmongo:kmongo:4.4.0")
+    implementation("org.litote.kmongo:kmongo:4.5.0")
 
     // needed for cryptography primitives implementation
-    implementation("io.iohk.atala:prism-crypto:1.3.0")
-    implementation("io.iohk.atala:prism-identity:1.3.0")
-    implementation("io.iohk.atala:prism-credentials:1.3.0")
-    implementation("io.iohk.atala:prism-api:1.3.0")
+    implementation("io.iohk.atala:prism-crypto:v1.3.2")
+    implementation("io.iohk.atala:prism-identity:v1.3.2")
+    implementation("io.iohk.atala:prism-credentials:v1.3.2")
+    implementation("io.iohk.atala:prism-api:v1.3.2")
 
     // Fixes a build issue
     implementation("com.soywiz.korlibs.krypto:krypto-jvm:2.0.6")
 
     // QR Code
-    implementation("org.boofcv:boofcv-core:0.39.1")
-    implementation("org.boofcv:boofcv-swing:0.39.1")
-    implementation("org.boofcv:boofcv-kotlin:0.39.1")
-    implementation("org.boofcv:boofcv-WebcamCapture:0.39.1")
+    implementation("org.boofcv:boofcv-core:0.40.1")
+    implementation("org.boofcv:boofcv-swing:0.40.1")
+    implementation("org.boofcv:boofcv-kotlin:0.40.1")
+    implementation("org.boofcv:boofcv-WebcamCapture:0.40.1")
 
     // DIDComm
     implementation("org.didcommx:didcomm:0.3.0")
