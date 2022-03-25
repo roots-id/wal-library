@@ -56,7 +56,7 @@ data class DID(
  *
  * @property keyId
  * @property didIdx
- * @property keyType
+ * @property keyTypeValue
  * @property keyIdx
  * @property privateKey
  * @property publicKey
@@ -66,8 +66,9 @@ data class DID(
 @Serializable
 data class KeyPair(
     val keyId: String,
+    val keyTypeValue: Int,
     val didIdx: Int,
-    val keyType: Int,
+    val keyDerivation: Int,
     val keyIdx: Int,
     val privateKey: String,
     val publicKey: String,
