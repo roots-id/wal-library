@@ -39,23 +39,45 @@ private fun transactionId(oid: AtalaOperationId): String {
 }
 
 /**
+ * Wait for submission
+ *
+ * @param nodePublicApi PRISM node
+ * @param operationId operation Identifier
+ * @param action action associated with the operation (for traceability)
+ * @return Log Entry
+ */
+private fun waitForSubmission(nodePublicApi: NodePublicApi, operationId: AtalaOperationId, action: BlockchainTxAction): BlockchainTxLogEntry {
+    var status = runBlocking {
+        nodePublicApi.getOperationInfo(operationId).status
+    }
+
+    while (status == AtalaOperationStatus.PENDING_SUBMISSION) {
+        println("Current operation status: ${AtalaOperationStatus.asString(status)}\n")
+        Thread.sleep(10000)
+        status = runBlocking {
+            nodePublicApi.getOperationInfo(operationId).status
+        }
+    }
+    val tid = transactionId(operationId)
+    println("Track the transaction in:\n- ${Config.TESTNET_URL}$tid\n")
+    return BlockchainTxLogEntry(tid, action, "${Config.TESTNET_URL}$tid")
+}
+
+/**
  * Wait until confirmed
  *
  * @param nodePublicApi PRISM node
  * @param operationId operation Identifier
  */
 private fun waitUntilConfirmed(nodePublicApi: NodePublicApi, operationId: AtalaOperationId) {
-    var tid = ""
+
     var status = runBlocking {
         nodePublicApi.getOperationInfo(operationId).status
     }
+
     while (status != AtalaOperationStatus.CONFIRMED_AND_APPLIED &&
         status != AtalaOperationStatus.CONFIRMED_AND_REJECTED
     ) {
-        if (status == AtalaOperationStatus.AWAIT_CONFIRMATION && tid.isEmpty()) {
-            tid = transactionId(operationId)
-            println("Track the transaction in:\n- ${Config.TESTNET_URL}$tid\n")
-        }
         println("Current operation status: ${AtalaOperationStatus.asString(status)}\n")
         Thread.sleep(10000)
         status = runBlocking {
@@ -205,7 +227,7 @@ fun getDidDocument(wallet: Wallet, didAlias: String): PrismDidDataModel {
 /**
  * Publish did
  *
- * @param wallet Wallet contining the DID
+ * @param wallet Wallet containing the DID
  * @param didAlias Alias of the DID
  * @return updated wallet
  */
@@ -238,6 +260,10 @@ fun publishDid(wallet: Wallet, didAlias: String): Wallet {
                 PrismDid.DEFAULT_MASTER_KEY_ID
             )
         }
+
+        wallet.addBlockchainTxLog(
+            waitForSubmission(nodeAuthApi, createDidOperationId, BlockchainTxAction.PUBLISH_DID)
+        )
         waitUntilConfirmed(nodeAuthApi, createDidOperationId)
 
         val response = runBlocking { nodeAuthApi.getOperationInfo(createDidOperationId) }
@@ -310,6 +336,10 @@ fun addKey(wallet: Wallet, didAlias: String, keyId: String, keyTypeValue: Int): 
                 keysToRevoke = arrayOf()
             )
         }
+
+        wallet.addBlockchainTxLog(
+            waitForSubmission(nodeAuthApi, updateDidOperationId, BlockchainTxAction.ADD_KEY)
+        )
         waitUntilConfirmed(nodeAuthApi, updateDidOperationId)
 
         val response = runBlocking { nodeAuthApi.getOperationInfo(updateDidOperationId) }
@@ -365,6 +395,10 @@ fun revokeKey(wallet: Wallet, didAlias: String, keyId: String): Wallet {
                     keysToRevoke = arrayOf(keyId)
                 )
             }
+
+            wallet.addBlockchainTxLog(
+                waitForSubmission(nodeAuthApi, updateDidOperationId, BlockchainTxAction.REVOKE_KEY)
+            )
             waitUntilConfirmed(nodeAuthApi, updateDidOperationId)
 
             val response = runBlocking { nodeAuthApi.getOperationInfo(updateDidOperationId) }
@@ -430,6 +464,10 @@ fun issueCredential(wallet: Wallet, didAlias: String, issuedCredential: IssuedCr
                 credentialsInfo.merkleRoot
             )
         }
+
+        wallet.addBlockchainTxLog(
+            waitForSubmission(nodeAuthApi, issueCredentialsOperationId, BlockchainTxAction.ISSUE_CREDENTIAL)
+        )
         waitUntilConfirmed(nodeAuthApi, issueCredentialsOperationId)
 
         val response = runBlocking { nodeAuthApi.getOperationInfo(issueCredentialsOperationId) }
@@ -484,6 +522,10 @@ fun revokeCredential(wallet: Wallet, credentialAlias: String): Wallet {
                     arrayOf(Sha256Digest.fromHex(credential.credentialHash))
                 )
             }
+
+            wallet.addBlockchainTxLog(
+                waitForSubmission(nodeAuthApi, revokeOperationId, BlockchainTxAction.REVOKE_CREDENTIAL)
+            )
             waitUntilConfirmed(nodeAuthApi, revokeOperationId)
 
             val status = runBlocking { nodeAuthApi.getOperationInfo(revokeOperationId).status }
