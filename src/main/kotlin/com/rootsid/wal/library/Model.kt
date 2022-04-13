@@ -27,8 +27,18 @@ data class Wallet(
     // List of imported (Issued elsewhere)
     var importedCredentials: MutableList<ImportedCredential> = mutableListOf(),
     // List of credentials issued by a DID from this wallet
-    var issuedCredentials: MutableList<IssuedCredential> = mutableListOf()
+    var issuedCredentials: MutableList<IssuedCredential> = mutableListOf(),
+    var blockchainTxLogEntry: MutableList<BlockchainTxLogEntry> = mutableListOf()
 )
+
+/**
+ * Add blockchain tx log
+ *
+ * @param entry blockchain transaction log entry
+ */
+fun Wallet.addBlockchainTxLog(entry: BlockchainTxLogEntry) {
+    blockchainTxLogEntry.add(entry)
+}
 
 /**
  * D i d
@@ -74,6 +84,30 @@ data class KeyPair(
     val publicKey: String,
     var revoked: Boolean = false
 )
+
+/**
+ * Blockchain tx log
+ *
+ * @property txId transaction id
+ * @property action one of ADD_KEY, REVOKE_KEY, PUBLISH_DID, ISSUE_CREDENTIAL, REVOKE_CREDENTIAL
+ * @property url to open the transaction on a blockchain explorer
+ * @constructor Create empty Blockchain tx log
+ */
+@Serializable
+data class BlockchainTxLogEntry(
+    val txId: String,
+    val action: BlockchainTxAction,
+    val url: String
+)
+
+// Enum for blockchain tx actions
+enum class BlockchainTxAction {
+    ADD_KEY,
+    REVOKE_KEY,
+    PUBLISH_DID,
+    ISSUE_CREDENTIAL,
+    REVOKE_CREDENTIAL
+}
 
 /**
  * Verified credential
