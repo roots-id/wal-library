@@ -62,8 +62,8 @@ publishing {
             name = "GitHubPackages"
             url = uri("https://maven.pkg.github.com/roots-id/wal-library")
             credentials {
-                username = System.getenv("ROOTSID_USER")
-                password = System.getenv("ROOTSID_PASSWORD")
+                username = System.getenv("GITHUB_USER")
+                password = System.getenv("GITHUB_TOKEN")
             }
         }
     }
