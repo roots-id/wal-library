@@ -601,7 +601,7 @@ fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): Verificat
  */
 class GrpcConfig {
     companion object {
-        private val host: String = System.getenv("PRISM_NODE_HOST")
+        private val host: String = System.getenv("PRISM_NODE_HOST") ?: "ppp-node-test.atalaprism.io"
         private val port: String = System.getenv("PRISM_NODE_PORT") ?: "50053"
         val options = GrpcOptions("https", host, port.toInt())
     }
