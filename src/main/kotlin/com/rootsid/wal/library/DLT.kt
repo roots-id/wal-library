@@ -8,6 +8,7 @@ import io.iohk.atala.prism.api.models.AtalaOperationStatus
 import io.iohk.atala.prism.api.node.NodeAuthApiImpl
 import io.iohk.atala.prism.api.node.NodePayloadGenerator
 import io.iohk.atala.prism.api.node.NodePublicApi
+import io.iohk.atala.prism.api.node.PrismDidState
 import io.iohk.atala.prism.common.PrismSdkInternal
 import io.iohk.atala.prism.credentials.json.JsonBasedCredential
 import io.iohk.atala.prism.crypto.MerkleInclusionProof
@@ -208,7 +209,7 @@ fun newDid(wallet: Wallet, didAlias: String, issuer: Boolean): Wallet {
  * @param didAlias Alias of the DID
  * @return DID document
  */
-fun getDidDocument(wallet: Wallet, didAlias: String): PrismDidDataModel {
+fun getDidDocument(wallet: Wallet, didAlias: String): PrismDidState {
     val didList = wallet.dids.filter { it.alias == didAlias }
     if (didList.isNotEmpty()) {
         val did = didList[0]
