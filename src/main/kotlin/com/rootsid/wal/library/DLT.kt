@@ -551,7 +551,7 @@ fun revokeCredential(wallet: Wallet, credentialAlias: String): Wallet {
  * @return Verification result
  */
 // TODO: refactor to a single verifyCredential function
-fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): VerificationResult {
+fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): List<String> {
     val credentials = wallet.issuedCredentials.filter { it.alias == credentialAlias }
     if (credentials.isNotEmpty()) {
         val credential = credentials[0]
@@ -562,11 +562,19 @@ fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): Verificatio
         val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
 
         return runBlocking {
-            nodeAuthApi.verify(signed, proof)
+            nodeAuthApi.verify(signed, proof).toMessageArray()
         }
     } else {
         throw Exception("Credential '$credentialAlias' not found.")
     }
+}
+
+private fun VerificationResult.toMessageArray(): List<String> {
+    val messages = mutableListOf<String>()
+    for(message in this.verificationErrors) {
+        messages.add(message.errorMessage)
+    }
+    return messages
 }
 
 /**
@@ -577,7 +585,7 @@ fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): Verificatio
  * @return Verification result
  */
 // TODO: refactor to a single verifyCredential function
-fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): VerificationResult {
+fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): List<String> {
     val credentials = wallet.importedCredentials.filter { it.alias == credentialAlias }
     if (credentials.isNotEmpty()) {
         val credential = credentials[0]
@@ -588,7 +596,7 @@ fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): Verificat
         val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
 
         return runBlocking {
-            nodeAuthApi.verify(signed, proof)
+            nodeAuthApi.verify(signed, proof).toMessageArray()
         }
     } else {
         throw Exception("Credential '$credentialAlias' not found.")
