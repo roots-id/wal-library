@@ -8,6 +8,7 @@ import io.iohk.atala.prism.api.models.AtalaOperationStatus
 import io.iohk.atala.prism.api.node.NodeAuthApiImpl
 import io.iohk.atala.prism.api.node.NodePayloadGenerator
 import io.iohk.atala.prism.api.node.NodePublicApi
+import io.iohk.atala.prism.api.node.PrismDidState
 import io.iohk.atala.prism.common.PrismSdkInternal
 import io.iohk.atala.prism.credentials.json.JsonBasedCredential
 import io.iohk.atala.prism.crypto.MerkleInclusionProof
@@ -208,7 +209,7 @@ fun newDid(wallet: Wallet, didAlias: String, issuer: Boolean): Wallet {
  * @param didAlias Alias of the DID
  * @return DID document
  */
-fun getDidDocument(wallet: Wallet, didAlias: String): PrismDidDataModel {
+fun getDidDocument(wallet: Wallet, didAlias: String): PrismDidState {
     val didList = wallet.dids.filter { it.alias == didAlias }
     if (didList.isNotEmpty()) {
         val did = didList[0]
@@ -550,7 +551,7 @@ fun revokeCredential(wallet: Wallet, credentialAlias: String): Wallet {
  * @return Verification result
  */
 // TODO: refactor to a single verifyCredential function
-fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): VerificationResult {
+fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): List<String> {
     val credentials = wallet.issuedCredentials.filter { it.alias == credentialAlias }
     if (credentials.isNotEmpty()) {
         val credential = credentials[0]
@@ -561,11 +562,19 @@ fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): Verificatio
         val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
 
         return runBlocking {
-            nodeAuthApi.verify(signed, proof)
+            nodeAuthApi.verify(signed, proof).toMessageArray()
         }
     } else {
         throw Exception("Credential '$credentialAlias' not found.")
     }
+}
+
+private fun VerificationResult.toMessageArray(): List<String> {
+    val messages = mutableListOf<String>()
+    for(message in this.verificationErrors) {
+        messages.add(message.errorMessage)
+    }
+    return messages
 }
 
 /**
@@ -576,7 +585,7 @@ fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): Verificatio
  * @return Verification result
  */
 // TODO: refactor to a single verifyCredential function
-fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): VerificationResult {
+fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): List<String> {
     val credentials = wallet.importedCredentials.filter { it.alias == credentialAlias }
     if (credentials.isNotEmpty()) {
         val credential = credentials[0]
@@ -587,7 +596,7 @@ fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): Verificat
         val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
 
         return runBlocking {
-            nodeAuthApi.verify(signed, proof)
+            nodeAuthApi.verify(signed, proof).toMessageArray()
         }
     } else {
         throw Exception("Credential '$credentialAlias' not found.")
