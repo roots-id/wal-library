@@ -23,6 +23,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import pbandk.ByteArr
+import pbandk.json.encodeToJsonString
 
 /**
  * Transaction id
@@ -223,6 +224,11 @@ fun getDidDocument(wallet: Wallet, didAlias: String): PrismDidState {
     } else {
         throw NoSuchElementException("DID '$didAlias' not found.")
     }
+}
+
+@OptIn(PrismSdkInternal::class)
+fun getDidDocumentJson(wallet: Wallet, didAlias: String): String {
+    return getDidDocument(wallet, didAlias).didData.toProto().encodeToJsonString()
 }
 
 /**
@@ -571,7 +577,7 @@ fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): List<String
 
 private fun VerificationResult.toMessageArray(): List<String> {
     val messages = mutableListOf<String>()
-    for(message in this.verificationErrors) {
+    for (message in this.verificationErrors) {
         messages.add(message.errorMessage)
     }
     return messages
