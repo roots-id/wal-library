@@ -48,7 +48,7 @@ private fun transactionId(oid: AtalaOperationId): String {
  * @param action action associated with the operation (for traceability)
  * @return Log Entry
  */
-private fun waitForSubmission(nodePublicApi: NodePublicApi, operationId: AtalaOperationId, action: BlockchainTxAction): BlockchainTxLogEntry {
+private fun waitForSubmission(nodePublicApi: NodePublicApi, operationId: AtalaOperationId, action: BlockchainTxAction, description: String): BlockchainTxLogEntry {
     var status = runBlocking {
         nodePublicApi.getOperationInfo(operationId).status
     }
@@ -62,7 +62,7 @@ private fun waitForSubmission(nodePublicApi: NodePublicApi, operationId: AtalaOp
     }
     val tid = transactionId(operationId)
     println("Track the transaction in:\n- ${Config.TESTNET_URL}$tid\n")
-    return BlockchainTxLogEntry(tid, action, "${Config.TESTNET_URL}$tid")
+    return BlockchainTxLogEntry(tid, action, "${Config.TESTNET_URL}$tid", description)
 }
 
 /**
@@ -269,7 +269,7 @@ fun publishDid(wallet: Wallet, didAlias: String): Wallet {
         }
 
         wallet.addBlockchainTxLog(
-            waitForSubmission(nodeAuthApi, createDidOperationId, BlockchainTxAction.PUBLISH_DID)
+            waitForSubmission(nodeAuthApi, createDidOperationId, BlockchainTxAction.PUBLISH_DID, "${did.alias}")
         )
         waitUntilConfirmed(nodeAuthApi, createDidOperationId)
 
@@ -345,7 +345,7 @@ fun addKey(wallet: Wallet, didAlias: String, keyId: String, keyTypeValue: Int): 
         }
 
         wallet.addBlockchainTxLog(
-            waitForSubmission(nodeAuthApi, updateDidOperationId, BlockchainTxAction.ADD_KEY)
+            waitForSubmission(nodeAuthApi, updateDidOperationId, BlockchainTxAction.ADD_KEY, "${didAlias}/${keyId}")
         )
         waitUntilConfirmed(nodeAuthApi, updateDidOperationId)
 
@@ -404,7 +404,7 @@ fun revokeKey(wallet: Wallet, didAlias: String, keyId: String): Wallet {
             }
 
             wallet.addBlockchainTxLog(
-                waitForSubmission(nodeAuthApi, updateDidOperationId, BlockchainTxAction.REVOKE_KEY)
+                waitForSubmission(nodeAuthApi, updateDidOperationId, BlockchainTxAction.REVOKE_KEY, "${didAlias}/${keyId}")
             )
             waitUntilConfirmed(nodeAuthApi, updateDidOperationId)
 
@@ -473,7 +473,7 @@ fun issueCredential(wallet: Wallet, didAlias: String, issuedCredential: IssuedCr
         }
 
         wallet.addBlockchainTxLog(
-            waitForSubmission(nodeAuthApi, issueCredentialsOperationId, BlockchainTxAction.ISSUE_CREDENTIAL)
+            waitForSubmission(nodeAuthApi, issueCredentialsOperationId, BlockchainTxAction.ISSUE_CREDENTIAL, "${didAlias}/${issuedCredential.alias}")
         )
         waitUntilConfirmed(nodeAuthApi, issueCredentialsOperationId)
 
@@ -531,7 +531,7 @@ fun revokeCredential(wallet: Wallet, credentialAlias: String): Wallet {
             }
 
             wallet.addBlockchainTxLog(
-                waitForSubmission(nodeAuthApi, revokeOperationId, BlockchainTxAction.REVOKE_CREDENTIAL)
+                waitForSubmission(nodeAuthApi, revokeOperationId, BlockchainTxAction.REVOKE_CREDENTIAL, "${credentialAlias}")
             )
             waitUntilConfirmed(nodeAuthApi, revokeOperationId)
 

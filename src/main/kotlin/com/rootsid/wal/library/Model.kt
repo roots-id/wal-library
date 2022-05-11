@@ -97,7 +97,8 @@ data class KeyPair(
 data class BlockchainTxLogEntry(
     val txId: String,
     val action: BlockchainTxAction,
-    val url: String
+    val url: String,
+    val description: String
 )
 
 // Enum for blockchain tx actions
