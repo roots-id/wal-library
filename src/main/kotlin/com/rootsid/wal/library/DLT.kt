@@ -33,7 +33,7 @@ import pbandk.json.encodeToJsonString
  */
 @OptIn(PrismSdkInternal::class)
 private fun transactionId(oid: AtalaOperationId): String {
-    val node = NodeServiceCoroutine.Client(GrpcClient(GrpcConfig.options))
+    val node = NodeServiceCoroutine.Client(GrpcClient(GrpcConfig.options()))
     val response = runBlocking {
         node.GetOperationInfo(GetOperationInfoRequest(ByteArr(oid.value())))
     }
@@ -214,7 +214,7 @@ fun getDidDocument(wallet: Wallet, didAlias: String): PrismDidState {
     val didList = wallet.dids.filter { it.alias == didAlias }
     if (didList.isNotEmpty()) {
         val did = didList[0]
-        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
+        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
         val prismDid = try {
             PrismDid.fromString(did.uriLongForm)
         } catch (e: Exception) {
@@ -242,7 +242,7 @@ fun publishDid(wallet: Wallet, didAlias: String): Wallet {
     val didList = wallet.dids.filter { it.alias == didAlias }
     if (didList.isNotEmpty()) {
         val did = didList[0]
-        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
+        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
         val prismDid = PrismDid.fromString(did.uriLongForm)
         // Key pairs to get private keys
         val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
@@ -299,7 +299,7 @@ fun addKey(wallet: Wallet, didAlias: String, keyId: String, keyTypeValue: Int): 
     if (didList.isNotEmpty()) {
         val did = didList[0]
         val keyIdx = did.keyPairs.filter { it.keyTypeValue == keyTypeValue }.size
-        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
+        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
 
         // Key pairs to get private keys
         val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
@@ -376,7 +376,7 @@ fun revokeKey(wallet: Wallet, didAlias: String, keyId: String): Wallet {
         val did = didList[0]
         val keyPairList = did.keyPairs.filter { it.keyId == keyId }
         if (keyPairList.isNotEmpty()) {
-            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
+            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
 
             // Key pairs to get private keys
             val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
@@ -437,7 +437,7 @@ fun issueCredential(wallet: Wallet, didAlias: String, issuedCredential: IssuedCr
     val didList = wallet.dids.filter { it.alias == didAlias }
     if (didList.isNotEmpty()) {
         val issuerDid = didList[0]
-        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
+        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
         val claims = mutableListOf<CredentialClaim>()
         // Key pairs to get private keys
         val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
@@ -504,7 +504,7 @@ fun revokeCredential(wallet: Wallet, credentialAlias: String): Wallet {
         val didList = wallet.dids.filter { it.alias == credential.issuingDidAlias }
         if (didList.isNotEmpty()) {
             val issuerDid = didList[0]
-            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
+            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
             // Key pairs to get private keys
             val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
             val revocationKeyPair = deriveKeyPair(issuerDid.keyPairs, seed, PrismDid.DEFAULT_REVOCATION_KEY_ID)
@@ -561,7 +561,7 @@ fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): List<String
     val credentials = wallet.issuedCredentials.filter { it.alias == credentialAlias }
     if (credentials.isNotEmpty()) {
         val credential = credentials[0]
-        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
+        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
         val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
         // Use encodeDefaults to generate empty siblings field on proof
         val format = Json { encodeDefaults = true }
@@ -595,7 +595,7 @@ fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): List<Stri
     val credentials = wallet.importedCredentials.filter { it.alias == credentialAlias }
     if (credentials.isNotEmpty()) {
         val credential = credentials[0]
-        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options)
+        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
         val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
         // Use encodeDefaults to generate empty siblings field on proof
         val format = Json { encodeDefaults = true }
@@ -611,13 +611,13 @@ fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): List<Stri
 
 /**
  * Grpc config
- *
+ * Done this way to allow programmatic override of the grpc config
  * @constructor Create empty Grpc config
  */
 class GrpcConfig {
     companion object {
-        private val host: String = System.getenv("PRISM_NODE_HOST")
-        private val port: String = System.getenv("PRISM_NODE_PORT") ?: "50053"
-        val options = GrpcOptions("https", host, port.toInt())
+        var host: String = System.getenv("PRISM_NODE_HOST") ?: ""
+        var port: String = System.getenv("PRISM_NODE_PORT") ?: "50053"
+        fun options() = GrpcOptions("https", host, port.toInt())
     }
 }
