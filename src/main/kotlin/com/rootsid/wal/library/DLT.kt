@@ -232,6 +232,22 @@ fun getDidDocumentJson(wallet: Wallet, didAlias: String): String {
 }
 
 /**
+ * Get did document
+ *
+ * @param did a prism did
+ * @return DID document
+ */
+fun getDidDocument(did: String): PrismDidState {
+    val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
+    val prismDid = try {
+        PrismDid.fromString(did)
+    } catch (e: Exception) {
+        throw Exception("not a Prism DID: $did")
+    }
+    return runBlocking { nodeAuthApi.getDidDocument(prismDid) }
+}
+
+/**
  * Publish did
  *
  * @param wallet Wallet containing the DID
@@ -249,7 +265,7 @@ fun publishDid(wallet: Wallet, didAlias: String): Wallet {
         val masterKeyPair = deriveKeyPair(did.keyPairs, seed, PrismDid.DEFAULT_MASTER_KEY_ID)
         val issuingKeyPair = deriveKeyPair(did.keyPairs, seed, PrismDid.DEFAULT_ISSUING_KEY_ID)
         val revocationKeyPair = deriveKeyPair(did.keyPairs, seed, PrismDid.DEFAULT_REVOCATION_KEY_ID)
-
+        // TODO: refactor to allow publishing of DIDs with other key pairs arrangements (e.g. with no revocation key, multiple master keys, etc.)
         val nodePayloadGenerator = NodePayloadGenerator(
             prismDid as LongFormPrismDid,
             mapOf(
@@ -269,7 +285,7 @@ fun publishDid(wallet: Wallet, didAlias: String): Wallet {
         }
 
         wallet.addBlockchainTxLog(
-            waitForSubmission(nodeAuthApi, createDidOperationId, BlockchainTxAction.PUBLISH_DID, "${did.alias}")
+            waitForSubmission(nodeAuthApi, createDidOperationId, BlockchainTxAction.PUBLISH_DID, did.alias)
         )
         waitUntilConfirmed(nodeAuthApi, createDidOperationId)
 
@@ -345,7 +361,7 @@ fun addKey(wallet: Wallet, didAlias: String, keyId: String, keyTypeValue: Int): 
         }
 
         wallet.addBlockchainTxLog(
-            waitForSubmission(nodeAuthApi, updateDidOperationId, BlockchainTxAction.ADD_KEY, "${didAlias}/${keyId}")
+            waitForSubmission(nodeAuthApi, updateDidOperationId, BlockchainTxAction.ADD_KEY, "$didAlias/$keyId")
         )
         waitUntilConfirmed(nodeAuthApi, updateDidOperationId)
 
@@ -404,7 +420,7 @@ fun revokeKey(wallet: Wallet, didAlias: String, keyId: String): Wallet {
             }
 
             wallet.addBlockchainTxLog(
-                waitForSubmission(nodeAuthApi, updateDidOperationId, BlockchainTxAction.REVOKE_KEY, "${didAlias}/${keyId}")
+                waitForSubmission(nodeAuthApi, updateDidOperationId, BlockchainTxAction.REVOKE_KEY, "$didAlias/$keyId")
             )
             waitUntilConfirmed(nodeAuthApi, updateDidOperationId)
 
@@ -473,7 +489,7 @@ fun issueCredential(wallet: Wallet, didAlias: String, issuedCredential: IssuedCr
         }
 
         wallet.addBlockchainTxLog(
-            waitForSubmission(nodeAuthApi, issueCredentialsOperationId, BlockchainTxAction.ISSUE_CREDENTIAL, "${didAlias}/${issuedCredential.alias}")
+            waitForSubmission(nodeAuthApi, issueCredentialsOperationId, BlockchainTxAction.ISSUE_CREDENTIAL, "$didAlias/${issuedCredential.alias}")
         )
         waitUntilConfirmed(nodeAuthApi, issueCredentialsOperationId)
 
@@ -531,7 +547,7 @@ fun revokeCredential(wallet: Wallet, credentialAlias: String): Wallet {
             }
 
             wallet.addBlockchainTxLog(
-                waitForSubmission(nodeAuthApi, revokeOperationId, BlockchainTxAction.REVOKE_CREDENTIAL, "${credentialAlias}")
+                waitForSubmission(nodeAuthApi, revokeOperationId, BlockchainTxAction.REVOKE_CREDENTIAL, credentialAlias)
             )
             waitUntilConfirmed(nodeAuthApi, revokeOperationId)
 
