@@ -9,7 +9,10 @@ import boofcv.io.image.UtilImageIO
 import boofcv.io.webcamcapture.UtilWebcamCapture
 import boofcv.kotlin.asBufferedImage
 import boofcv.kotlin.asGrayU8
+import boofcv.kotlin.loadImage
 import boofcv.struct.image.GrayU8
+import boofcv.struct.image.ImageType
+import java.io.File
 import java.time.LocalDateTime
 
 /**
@@ -33,6 +36,24 @@ fun saveQRImage(message: String, filename: String) {
     val qr = QrCodeEncoder().addAutomatic(message).fixate()
     val generator = QrCodeGeneratorImage(15).render(qr)
     UtilImageIO.saveImage(generator.gray.asBufferedImage(), filename)
+}
+
+/**
+ * Scan QR code from a file
+ *
+ * @param filename Input QR filename
+ * @return Message retrieved from the scaned QR image
+ */
+fun qrCodeFileScan(filename: String): String {
+    try {
+        val detector = FactoryFiducial.qrcode(null, GrayU8::class.java)
+        val file = File(filename)
+        val image = file.absoluteFile.loadImage(ImageType.SB_U8)
+        detector.process(image)
+        return detector.detections[0].message
+    } catch (e: Exception) {
+        throw Exception("Couldn't read the  QR image")
+    }
 }
 
 /**
