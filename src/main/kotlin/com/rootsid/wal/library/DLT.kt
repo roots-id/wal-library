@@ -232,8 +232,8 @@ fun getDidDocumentJson(wallet: Wallet, didAlias: String): String {
 }
 
 @OptIn(PrismSdkInternal::class)
-fun getDidDocumentJson(didAlias: String): String {
-    return getDidDocument(didAlias).didData.toProto().encodeToJsonString()
+fun getDidDocumentJson(did: String): String {
+    return getDidDocument(did).didData.toProto().encodeToJsonString()
 }
 
 /**
