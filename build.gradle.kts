@@ -6,6 +6,7 @@ plugins {
 
 group = "com.rootsid.wal"
 version = "1.0.1-SNAPSHOT"
+java.sourceCompatibility = JavaVersion.VERSION_11
 
 repositories {
     mavenCentral()
@@ -47,6 +48,12 @@ dependencies {
     implementation("org.didcommx:peerdid:0.3.0")
 
     implementation("org.junit.jupiter:junit-jupiter:5.8.2")
+
+    // Align versions of all Kotlin components
+    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
+
+    // Use the Kotlin JDK 8 standard library.
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 }
 
 publishing {
@@ -67,6 +74,10 @@ publishing {
             }
         }
     }
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>() {
+    kotlinOptions.jvmTarget = "11"
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
