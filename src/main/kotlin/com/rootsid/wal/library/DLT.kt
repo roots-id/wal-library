@@ -11,6 +11,7 @@ import io.iohk.atala.prism.api.node.NodePublicApi
 import io.iohk.atala.prism.api.node.PrismDidState
 import io.iohk.atala.prism.common.PrismSdkInternal
 import io.iohk.atala.prism.credentials.json.JsonBasedCredential
+import io.iohk.atala.prism.crypto.EC
 import io.iohk.atala.prism.crypto.MerkleInclusionProof
 import io.iohk.atala.prism.crypto.Sha256Digest
 import io.iohk.atala.prism.crypto.derivation.KeyDerivation
@@ -18,10 +19,15 @@ import io.iohk.atala.prism.crypto.derivation.MnemonicCode
 import io.iohk.atala.prism.crypto.keys.ECKeyPair
 import io.iohk.atala.prism.identity.*
 import io.iohk.atala.prism.protos.*
+import io.ipfs.multibase.Base58
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import pbandk.ByteArr
 import pbandk.json.encodeToJsonString
 
@@ -250,6 +256,64 @@ fun getDidDocument(did: String): PrismDidState {
         throw Exception("not a Prism DID: $did")
     }
     return runBlocking { nodeAuthApi.getDidDocument(prismDid) }
+}
+
+/**
+ * Get did document
+ *
+ * @param did a prism did
+ * @return W3C compliant DID document
+ */
+@OptIn(PrismSdkInternal::class)
+fun getDidDocumentW3C(did: String): JsonObject {
+    fun byteArrayOfInts(ints: List<String>) = ByteArray(ints.size) { pos -> ints[pos].toInt().toByte() }
+    fun String.decodeHex(): ByteArray {
+        check(length % 2 == 0) { "Must have an even length" }
+        return chunked(2)
+            .map { it.toInt(16).toByte() }
+            .toByteArray()
+    }
+
+    val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
+    val prismDid = try {
+        PrismDid.fromString(did)
+    } catch (e: Exception) {
+        throw Exception("not a Prism DID: $did")
+    }
+    val prismDoc = runBlocking { nodeAuthApi.getDidDocument(prismDid) }
+
+    var didDocW3C = mutableMapOf<String, JsonElement>(
+        "@context" to JsonArray(listOf(JsonPrimitive("https://www.w3.org/ns/did/v1"))),
+        "id" to JsonPrimitive(did),
+        "assertionMethod" to JsonArray(listOf(JsonPrimitive(did + "#master0"))),
+    )
+    var verificationMethods: MutableList<JsonObject> = ArrayList()
+    // TODO parsing a string is not the best way to access the object. Need to figure out
+    // how to access OneOf.CompressedEcKeyData directly
+    for (pubk in prismDoc.didData.publicKeys) {
+        val keyId = pubk.didPublicKey.toProto().id
+        val dataStr = pubk.didPublicKey.toProto().keyData.toString()
+            .replace("OneOf.CompressedEcKeyData(CompressedECKeyData(curve=secp256k1, data=[", "")
+            .replace("], unknownFields={}))", "")
+            .replace(" ", "")
+        val dataArr = dataStr.split(",")
+        val dataCompress = byteArrayOfInts(dataArr)
+        val dataHexa = EC.toPublicKeyFromCompressed(dataCompress).getHexEncoded()
+        verificationMethods.add(
+            JsonObject(
+                mapOf(
+                    "@context" to JsonArray(listOf(JsonPrimitive("https://w3id.org/security/v1"))),
+                    "id" to JsonPrimitive(did + "#" + keyId),
+                    "type" to JsonPrimitive("EcdsaSecp256k1VerificationKey2019"),
+                    "controller" to JsonPrimitive(did),
+                    "publicKeyBase58" to JsonPrimitive(Base58.encode(dataHexa.drop(2).decodeHex()))
+                )
+            )
+        )
+    }
+    didDocW3C["verificationMethod"] = JsonArray(verificationMethods)
+
+    return JsonObject(didDocW3C)
 }
 
 /**
