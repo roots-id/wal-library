@@ -1,4 +1,4 @@
-package com.rootsid.wal.library
+package com.rootsid.wal.library.didcom
 
 import org.didcommx.didcomm.common.VerificationMaterial
 import org.didcommx.didcomm.common.VerificationMaterialFormat
