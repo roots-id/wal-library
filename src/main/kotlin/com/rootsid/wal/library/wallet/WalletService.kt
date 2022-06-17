@@ -1,7 +1,7 @@
 package com.rootsid.wal.library.wallet
 
 import com.rootsid.wal.library.Config
-import com.rootsid.wal.library.Wallet
+import com.rootsid.wal.library.wallet.model.Wallet
 import io.iohk.atala.prism.crypto.derivation.KeyDerivation
 import io.iohk.atala.prism.crypto.derivation.MnemonicCode
 import io.iohk.atala.prism.crypto.util.BytesOps

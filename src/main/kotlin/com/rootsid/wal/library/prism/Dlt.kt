@@ -4,8 +4,10 @@ import com.rootsid.wal.library.*
 import com.rootsid.wal.library.prism.model.Did
 import com.rootsid.wal.library.prism.model.DltDidUpdate
 import com.rootsid.wal.library.prism.model.KeyPath
+import com.rootsid.wal.library.wallet.model.*
 import io.iohk.atala.prism.api.CredentialClaim
 import io.iohk.atala.prism.api.KeyGenerator
+import io.iohk.atala.prism.api.VerificationResult
 import io.iohk.atala.prism.api.models.AtalaOperationId
 import io.iohk.atala.prism.api.models.AtalaOperationStatus
 import io.iohk.atala.prism.api.node.NodeAuthApiImpl
@@ -13,7 +15,9 @@ import io.iohk.atala.prism.api.node.NodePayloadGenerator
 import io.iohk.atala.prism.api.node.NodePublicApi
 import io.iohk.atala.prism.api.node.PrismDidState
 import io.iohk.atala.prism.common.PrismSdkInternal
+import io.iohk.atala.prism.credentials.json.JsonBasedCredential
 import io.iohk.atala.prism.crypto.EC
+import io.iohk.atala.prism.crypto.MerkleInclusionProof
 import io.iohk.atala.prism.crypto.Sha256Digest
 import io.iohk.atala.prism.crypto.keys.ECKeyPair
 import io.iohk.atala.prism.identity.*
@@ -21,9 +25,9 @@ import io.iohk.atala.prism.protos.*
 import io.ipfs.multibase.Base58
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import pbandk.ByteArr
-import pbandk.ExperimentalProtoJson
 import pbandk.json.encodeToJsonString
 
 class Dlt {
@@ -457,7 +461,6 @@ class Dlt {
         return DltDidUpdate(issueCredentialsOperationId.hexValue(), issuerDid)
     }
 
-
     /**
      * Revoke credential
      *
@@ -494,5 +497,80 @@ class Dlt {
         }
         credential.revoked = true
         return DltDidUpdate(revokeOperationId.hexValue(), issuerDid)
+    }
+
+    // TODO REFACTOR PENDING ON FUNCTIONS BELOW
+
+    /**
+     * Verify issued credential
+     *
+     * @param wallet Wallet containing the credential
+     * @param credentialAlias Alias of Credential to verify
+     * @return Verification result
+     */
+    // TODO: refactor to a single verifyCredential function
+    fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): List<String> {
+        val credentials = wallet.issuedCredentials.filter { it.alias == credentialAlias }
+        if (credentials.isNotEmpty()) {
+            val credential = credentials[0]
+            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
+            val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
+            // Use encodeDefaults to generate empty siblings field on proof
+            val format = Json { encodeDefaults = true }
+            val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
+
+            return runBlocking {
+                nodeAuthApi.verify(signed, proof).toMessageArray()
+            }
+        } else {
+            throw Exception("Credential '$credentialAlias' not found.")
+        }
+    }
+
+    private fun VerificationResult.toMessageArray(): List<String> {
+        val messages = mutableListOf<String>()
+        for (message in this.verificationErrors) {
+            messages.add(message.errorMessage)
+        }
+        return messages
+    }
+
+    /**
+     * Verify imported credential
+     *
+     * @param wallet Wallet containing the credential
+     * @param credentialAlias Alias of credential to verify
+     * @return Verification result
+     */
+    // TODO: refactor to a single verifyCredential function
+    fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): List<String> {
+        val credentials = wallet.importedCredentials.filter { it.alias == credentialAlias }
+        if (credentials.isNotEmpty()) {
+            val credential = credentials[0]
+            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
+            val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
+            // Use encodeDefaults to generate empty siblings field on proof
+            val format = Json { encodeDefaults = true }
+            val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
+
+            return runBlocking {
+                nodeAuthApi.verify(signed, proof).toMessageArray()
+            }
+        } else {
+            throw Exception("Credential '$credentialAlias' not found.")
+        }
+    }
+
+    /**
+     * Grpc config
+     * Done this way to allow programmatic override of the grpc config
+     * @constructor Create empty Grpc config
+     */
+    class GrpcConfig {
+        companion object {
+            var host: String = System.getenv("PRISM_NODE_HOST") ?: ""
+            var port: String = System.getenv("PRISM_NODE_PORT") ?: "50053"
+            fun options() = GrpcOptions("https", host, port.toInt())
+        }
     }
 }

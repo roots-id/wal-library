@@ -1,6 +1,7 @@
 package com.rootsid.wal.library.didcom
 
-import com.rootsid.wal.library.UnpackResult
+import com.rootsid.wal.library.didcom.model.UnpackResult
+import com.rootsid.wal.library.didcom.storage.SecretResolver
 import org.didcommx.didcomm.DIDComm
 import org.didcommx.didcomm.message.Message
 import org.didcommx.didcomm.model.PackEncryptedParams

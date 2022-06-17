@@ -1,6 +1,7 @@
 package com.rootsid.wal.library
 
 import com.mongodb.client.MongoDatabase
+import com.rootsid.wal.library.wallet.model.Wallet
 import org.litote.kmongo.*
 
 /**
