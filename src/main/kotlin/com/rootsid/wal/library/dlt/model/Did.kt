@@ -1,4 +1,4 @@
-package com.rootsid.wal.library.prism.model
+package com.rootsid.wal.library.dlt.model
 
 import kotlinx.serialization.Serializable
 

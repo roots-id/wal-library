@@ -1,7 +1,6 @@
 package com.rootsid.wal.library.wallet.model
 
-import com.rootsid.wal.library.prism.model.Did
-import kotlinx.serialization.Serializable
+import com.rootsid.wal.library.dlt.model.Did
 
 /**
  * Wallet
@@ -14,25 +13,24 @@ import kotlinx.serialization.Serializable
  * @property issuedCredentials
  * @constructor Create empty Wallet
  */
-@Serializable
-data class Wallet(
-    var _id: String, // name
-    val mnemonic: List<String>,
-    val passphrase: String,
-    val seed: String,
-    var dids: MutableList<Did> = mutableListOf(),
+interface Wallet {
+    val _id: String // name of the wallet
+    val seed: String
+    var dids: MutableList<Did>
     // List of imported (Issued elsewhere)
-    var importedCredentials: MutableList<ImportedCredential> = mutableListOf(),
+    var importedCredentials: MutableList<ImportedCredential>
     // List of credentials issued by a DID from this wallet
-    var issuedCredentials: MutableList<IssuedCredential> = mutableListOf(),
-    var blockchainTxLogEntry: MutableList<BlockchainTxLogEntry> = mutableListOf()
-)
+    var issuedCredentials: MutableList<IssuedCredential>
 
-/**
- * Add blockchain tx log
- *
- * @param entry blockchain transaction log entry
- */
-fun Wallet.addBlockchainTxLog(entry: BlockchainTxLogEntry) {
-    blockchainTxLogEntry.add(entry)
+    fun addDid(did: Did) {
+        dids.add(did)
+    }
+
+    fun addImportedCredential(credential: ImportedCredential) {
+        importedCredentials.add(credential)
+    }
+
+    fun addIssuedCredential(credential: IssuedCredential) {
+        issuedCredentials.add(credential)
+    }
 }

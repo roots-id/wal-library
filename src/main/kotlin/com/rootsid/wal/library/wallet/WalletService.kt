@@ -1,12 +1,12 @@
 package com.rootsid.wal.library.wallet
 
-import com.rootsid.wal.library.Config
+import com.rootsid.wal.library.Constant
 import com.rootsid.wal.library.wallet.model.Wallet
+import com.rootsid.wal.library.wallet.storage.Storage
 import io.iohk.atala.prism.crypto.derivation.KeyDerivation
 import io.iohk.atala.prism.crypto.derivation.MnemonicCode
-import io.iohk.atala.prism.crypto.util.BytesOps
 
-class WalletService {
+class WalletService(private val storage: Storage) {
 
     /**
      * New wallet
@@ -16,11 +16,10 @@ class WalletService {
      * @param passphrase passphrase
      * @return a new wallet
      */
-    fun newWallet(name: String, mnemonic: String, passphrase: String): Wallet {
-        val mnemonicList = mnemonic.split(Config.MNEMONIC_SEPARATOR).map { it.trim() }
+    fun createWallet(name: String, mnemonic: String, passphrase: String): Wallet {
+        val mnemonicList = mnemonic.split(Constant.MNEMONIC_SEPARATOR).map { it.trim() }
         val seed = generateSeed(mnemonic, passphrase)
-        // TODO: add wallet to storage
-        return Wallet(name, mnemonicList, passphrase, BytesOps.bytesToHex(seed))
+        return storage.createWallet(name, seed)
     }
 
     /**
@@ -38,7 +37,7 @@ class WalletService {
             seed = KeyDerivation.binarySeed(mnemonicList, passphrase)
         } else {
             try {
-                mnemonicList = MnemonicCode(mnemonic.split(Config.MNEMONIC_SEPARATOR).map { it.trim() })
+                mnemonicList = MnemonicCode(mnemonic.split(Constant.MNEMONIC_SEPARATOR).map { it.trim() })
                 seed = KeyDerivation.binarySeed(mnemonicList, passphrase)
             } catch (e: Exception) {
                 throw Exception("Invalid mnemonic phrase")

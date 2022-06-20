@@ -1,9 +1,8 @@
-package com.rootsid.wal.library.prism
+package com.rootsid.wal.library.dlt
 
 import com.rootsid.wal.library.*
-import com.rootsid.wal.library.prism.model.Did
-import com.rootsid.wal.library.prism.model.DltDidUpdate
-import com.rootsid.wal.library.prism.model.KeyPath
+import com.rootsid.wal.library.dlt.model.*
+import com.rootsid.wal.library.dlt.model.Did
 import com.rootsid.wal.library.wallet.model.*
 import io.iohk.atala.prism.api.CredentialClaim
 import io.iohk.atala.prism.api.KeyGenerator
@@ -15,9 +14,7 @@ import io.iohk.atala.prism.api.node.NodePayloadGenerator
 import io.iohk.atala.prism.api.node.NodePublicApi
 import io.iohk.atala.prism.api.node.PrismDidState
 import io.iohk.atala.prism.common.PrismSdkInternal
-import io.iohk.atala.prism.credentials.json.JsonBasedCredential
 import io.iohk.atala.prism.crypto.EC
-import io.iohk.atala.prism.crypto.MerkleInclusionProof
 import io.iohk.atala.prism.crypto.Sha256Digest
 import io.iohk.atala.prism.crypto.keys.ECKeyPair
 import io.iohk.atala.prism.identity.*
@@ -25,7 +22,6 @@ import io.iohk.atala.prism.protos.*
 import io.ipfs.multibase.Base58
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import pbandk.ByteArr
 import pbandk.json.encodeToJsonString
@@ -33,27 +29,27 @@ import pbandk.json.encodeToJsonString
 class Dlt {
 
     /**
-     * Transaction id
-     *
-     * @param oid operation identifier
-     * @return transaction Id
+     * Use this function to get the blockchain transaction ID associated with an operationID
+     * @param operationId operation identifier
+     * @return blockchain Tx identifier
      */
     @OptIn(PrismSdkInternal::class)
-    private fun transactionId(oid: AtalaOperationId): String {
+    private fun transactionId(operationId: AtalaOperationId): String {
         val node = NodeServiceCoroutine.Client(GrpcClient(GrpcConfig.options()))
         val response = runBlocking {
-            node.GetOperationInfo(GetOperationInfoRequest(ByteArr(oid.value())))
+            node.GetOperationInfo(GetOperationInfoRequest(ByteArr(operationId.value())))
         }
         return response.transactionId
     }
 
     /**
-     * Wait for submission
+     * Waits until the operationId status changes from [AtalaOperationStatus.PENDING_SUBMISSION] to [AtalaOperationStatus.AWAIT_CONFIRMATION]
      *
-     * @param nodePublicApi PRISM node
+     * @param nodePublicApi PRISM node request handler
      * @param operationId operation Identifier
      * @param action action associated with the operation (for traceability)
-     * @return Log Entry
+     * @param description additional details
+     * @return Log Entry containing details of the operation and the blockchain transaction
      */
     private fun waitForSubmission(nodePublicApi: NodePublicApi, operationId: AtalaOperationId, action: BlockchainTxAction, description: String): BlockchainTxLogEntry {
         var status = runBlocking {
@@ -68,14 +64,14 @@ class Dlt {
             }
         }
         val tid = transactionId(operationId)
-        println("Track the transaction in:\n- ${Config.TESTNET_URL}$tid\n")
-        return BlockchainTxLogEntry(tid, action, "${Config.TESTNET_URL}$tid", description)
+        println("Track the transaction in:\n- ${Constant.TESTNET_URL}$tid\n")
+        return BlockchainTxLogEntry(tid, action, "${Constant.TESTNET_URL}$tid", description)
     }
 
     /**
-     * Wait until confirmed
+     * Waits until the operationId status changes to [AtalaOperationStatus.CONFIRMED_AND_REJECTED] or [AtalaOperationStatus.CONFIRMED_AND_APPLIED]
      *
-     * @param nodePublicApi PRISM node
+     * @param nodePublicApi PRISM node request handler
      * @param operationId operation Identifier
      */
     private fun waitUntilConfirmed(nodePublicApi: NodePublicApi, operationId: AtalaOperationId) {
@@ -96,16 +92,16 @@ class Dlt {
     }
 
     /**
-     * Derive key pair
+     * Derive a key pair using a seed and a [KeyPath]
      *
-     * @param keyPairs List containing key path information
+     * @param keyPaths List containing key path information
      * @param seed seed
      * @param keyId Id of the key to derive
      * @return Key pair
      */
     @OptIn(PrismSdkInternal::class)
-    private fun deriveKeyPair(keyPairs: MutableList<KeyPath>, seed: ByteArray, keyId: String): ECKeyPair {
-        val keyPathList = keyPairs.filter { it.keyId == keyId }
+    private fun deriveKeyPair(keyPaths: MutableList<KeyPath>, seed: ByteArray, keyId: String): ECKeyPair {
+        val keyPathList = keyPaths.filter { it.keyId == keyId }
         if (keyPathList.isNotEmpty()) {
             val keyPath = keyPathList[0]
             return KeyGenerator.deriveKeyFromFullPath(
@@ -499,7 +495,7 @@ class Dlt {
         return DltDidUpdate(revokeOperationId.hexValue(), issuerDid)
     }
 
-    // TODO REFACTOR PENDING ON FUNCTIONS BELOW
+    // TODO: REFACTOR PENDING ON FUNCTIONS BELOW
 
     /**
      * Verify issued credential
@@ -509,23 +505,23 @@ class Dlt {
      * @return Verification result
      */
     // TODO: refactor to a single verifyCredential function
-    fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): List<String> {
-        val credentials = wallet.issuedCredentials.filter { it.alias == credentialAlias }
-        if (credentials.isNotEmpty()) {
-            val credential = credentials[0]
-            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
-            val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
-            // Use encodeDefaults to generate empty siblings field on proof
-            val format = Json { encodeDefaults = true }
-            val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
-
-            return runBlocking {
-                nodeAuthApi.verify(signed, proof).toMessageArray()
-            }
-        } else {
-            throw Exception("Credential '$credentialAlias' not found.")
-        }
-    }
+//    fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): List<String> {
+//        val credentials = wallet.issuedCredentials.filter { it.alias == credentialAlias }
+//        if (credentials.isNotEmpty()) {
+//            val credential = credentials[0]
+//            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
+//            val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
+//            // Use encodeDefaults to generate empty siblings field on proof
+//            val format = Json { encodeDefaults = true }
+//            val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
+//
+//            return runBlocking {
+//                nodeAuthApi.verify(signed, proof).toMessageArray()
+//            }
+//        } else {
+//            throw Exception("Credential '$credentialAlias' not found.")
+//        }
+//    }
 
     private fun VerificationResult.toMessageArray(): List<String> {
         val messages = mutableListOf<String>()
@@ -543,23 +539,23 @@ class Dlt {
      * @return Verification result
      */
     // TODO: refactor to a single verifyCredential function
-    fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): List<String> {
-        val credentials = wallet.importedCredentials.filter { it.alias == credentialAlias }
-        if (credentials.isNotEmpty()) {
-            val credential = credentials[0]
-            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
-            val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
-            // Use encodeDefaults to generate empty siblings field on proof
-            val format = Json { encodeDefaults = true }
-            val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
-
-            return runBlocking {
-                nodeAuthApi.verify(signed, proof).toMessageArray()
-            }
-        } else {
-            throw Exception("Credential '$credentialAlias' not found.")
-        }
-    }
+//    fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): List<String> {
+//        val credentials = wallet.importedCredentials.filter { it.alias == credentialAlias }
+//        if (credentials.isNotEmpty()) {
+//            val credential = credentials[0]
+//            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
+//            val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
+//            // Use encodeDefaults to generate empty siblings field on proof
+//            val format = Json { encodeDefaults = true }
+//            val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
+//
+//            return runBlocking {
+//                nodeAuthApi.verify(signed, proof).toMessageArray()
+//            }
+//        } else {
+//            throw Exception("Credential '$credentialAlias' not found.")
+//        }
+//    }
 
     /**
      * Grpc config

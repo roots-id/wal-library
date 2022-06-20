@@ -1,5 +1,7 @@
 package com.rootsid.wal.library.wallet.model
 
+import com.rootsid.wal.library.dlt.model.Claim
+import com.rootsid.wal.library.dlt.model.VerifiedCredential
 import kotlinx.serialization.Serializable
 
 /**
