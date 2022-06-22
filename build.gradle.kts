@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.rootsid.wal"
-version = "1.0.2"
+version = "2.0.0"
 java.sourceCompatibility = JavaVersion.VERSION_11
 
 repositories {
@@ -23,6 +23,12 @@ repositories {
 }
 
 dependencies {
+    // Align versions of all Kotlin components
+    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
+
+    // Use the Kotlin JDK 8 standard library.
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.6.10")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0-native-mt")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
@@ -47,13 +53,8 @@ dependencies {
     implementation("org.didcommx:didcomm:0.3.0")
     implementation("org.didcommx:peerdid:0.3.0")
 
-    implementation("org.junit.jupiter:junit-jupiter:5.8.2")
-
-    // Align versions of all Kotlin components
-    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
-
-    // Use the Kotlin JDK 8 standard library.
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    // Test
+    testImplementation("org.junit.jupiter:junit-jupiter:5.8.2")
 }
 
 publishing {
@@ -76,7 +77,7 @@ publishing {
     }
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>() {
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions.jvmTarget = "11"
 }
 
