@@ -1,12 +1,14 @@
 package com.rootsid.wal.library.wallet
 
 import com.rootsid.wal.library.Constant
+import com.rootsid.wal.library.mongoimpl.document.WalletDocument
 import com.rootsid.wal.library.wallet.model.Wallet
-import com.rootsid.wal.library.wallet.storage.Storage
+import com.rootsid.wal.library.wallet.storage.WalletStorage
 import io.iohk.atala.prism.crypto.derivation.KeyDerivation
 import io.iohk.atala.prism.crypto.derivation.MnemonicCode
+import io.iohk.atala.prism.crypto.util.BytesOps
 
-class WalletService(private val storage: Storage) {
+class WalletService(private val walletStorage: WalletStorage) {
 
     /**
      * New wallet
@@ -17,9 +19,8 @@ class WalletService(private val storage: Storage) {
      * @return a new wallet
      */
     fun createWallet(name: String, mnemonic: String, passphrase: String): Wallet {
-        val mnemonicList = mnemonic.split(Constant.MNEMONIC_SEPARATOR).map { it.trim() }
         val seed = generateSeed(mnemonic, passphrase)
-        return storage.createWallet(name, seed)
+        return walletStorage.insert(WalletDocument(name, BytesOps.bytesToHex(seed)))
     }
 
     /**
@@ -29,7 +30,7 @@ class WalletService(private val storage: Storage) {
      * @param passphrase Passphrase to protect the seed with a password
      * @return seed
      */
-    fun generateSeed(mnemonic: String, passphrase: String): ByteArray {
+    private fun generateSeed(mnemonic: String, passphrase: String): ByteArray {
         val seed: ByteArray
         val mnemonicList: MnemonicCode
         if (mnemonic.trim().isBlank()) {
