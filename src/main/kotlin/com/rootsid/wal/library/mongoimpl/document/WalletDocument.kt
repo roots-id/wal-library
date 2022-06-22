@@ -1,4 +1,4 @@
-package com.rootsid.wal.library.wallet.storage.document
+package com.rootsid.wal.library.mongoimpl.document
 
 import com.rootsid.wal.library.dlt.model.Did
 import com.rootsid.wal.library.wallet.model.ImportedCredential
@@ -9,8 +9,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class WalletDocument(
     override val _id: String,
-//    override val mnemonic: List<String>,
-//    override val passphrase: String,
     override val seed: String,
     override var dids: MutableList<Did> = mutableListOf(),
     // List of imported (Issued elsewhere)
