@@ -6,8 +6,6 @@ import com.rootsid.wal.library.dlt.model.Did
  * Wallet
  *
  * @property _id
- * @property mnemonic
- * @property passphrase
  * @property dids
  * @property importedCredentials
  * @property issuedCredentials
@@ -21,16 +19,16 @@ interface Wallet {
     var importedCredentials: MutableList<ImportedCredential>
     // List of credentials issued by a DID from this wallet
     var issuedCredentials: MutableList<IssuedCredential>
+}
 
-    fun addDid(did: Did) {
-        dids.add(did)
-    }
+fun Wallet.addDid(did: Did) {
+    dids.add(did)
+}
 
-    fun addImportedCredential(credential: ImportedCredential) {
-        importedCredentials.add(credential)
-    }
+fun Wallet.addImportedCredential(credential: ImportedCredential) {
+    importedCredentials.add(credential)
+}
 
-    fun addIssuedCredential(credential: IssuedCredential) {
-        issuedCredentials.add(credential)
-    }
+fun Wallet.addIssuedCredential(credential: IssuedCredential) {
+    issuedCredentials.add(credential)
 }

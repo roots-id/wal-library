@@ -1,4 +1,4 @@
-package com.rootsid.wal.library
+package com.rootsid.wal.library.utils
 
 import boofcv.alg.fiducial.qrcode.QrCodeEncoder
 import boofcv.alg.fiducial.qrcode.QrCodeGeneratorImage

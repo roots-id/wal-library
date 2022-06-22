@@ -1,9 +1,8 @@
-package com.rootsid.wal.library
+package com.rootsid.wal.library.wallet.storage.document
 
 import com.mongodb.ConnectionString
 import com.mongodb.client.MongoDatabase
 import com.rootsid.wal.library.wallet.model.Wallet
-import com.rootsid.wal.library.wallet.storage.document.WalletDocument
 import com.rootsid.wal.library.wallet.storage.Storage
 import io.iohk.atala.prism.crypto.util.BytesOps
 import org.litote.kmongo.*

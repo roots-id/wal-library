@@ -1,7 +1,6 @@
 package com.rootsid.wal.library.wallet.storage.document
 
 import com.rootsid.wal.library.dlt.model.Did
-import com.rootsid.wal.library.wallet.model.BlockchainTxLogEntry
 import com.rootsid.wal.library.wallet.model.ImportedCredential
 import com.rootsid.wal.library.wallet.model.IssuedCredential
 import com.rootsid.wal.library.wallet.model.Wallet
