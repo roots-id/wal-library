@@ -1,26 +1,44 @@
 package com.rootsid.wal.library.wallet
 
 import com.rootsid.wal.library.Constant
+import com.rootsid.wal.library.dlt.Dlt
+import com.rootsid.wal.library.dlt.model.Did
 import com.rootsid.wal.library.mongoimpl.document.WalletDocument
 import com.rootsid.wal.library.wallet.model.Wallet
+import com.rootsid.wal.library.wallet.model.addDid
 import com.rootsid.wal.library.wallet.storage.WalletStorage
+import io.iohk.atala.prism.api.models.AtalaOperationStatus
+import io.iohk.atala.prism.api.models.AtalaOperationStatusEnum
+import io.iohk.atala.prism.api.node.PrismDidState
+import io.iohk.atala.prism.common.PrismSdkInternal
 import io.iohk.atala.prism.crypto.derivation.KeyDerivation
 import io.iohk.atala.prism.crypto.derivation.MnemonicCode
 import io.iohk.atala.prism.crypto.util.BytesOps
+import io.iohk.atala.prism.protos.DIDData
+import java.util.*
 
-class WalletService(private val walletStorage: WalletStorage) {
+class WalletService(private val walletStorage: WalletStorage, private val dlt: Dlt) {
 
     /**
      * New wallet
      *
-     * @param name Wallet name
+     * @param id Wallet name
      * @param mnemonic mnemonic, leave empty to generate a random one
      * @param passphrase passphrase
      * @return a new wallet
      */
-    fun createWallet(name: String, mnemonic: String, passphrase: String): Wallet {
+    fun createWallet(id: String, mnemonic: String, passphrase: String): Wallet {
         val seed = generateSeed(mnemonic, passphrase)
-        return walletStorage.insert(WalletDocument(name, BytesOps.bytesToHex(seed)))
+        return walletStorage.insert(WalletDocument(id, BytesOps.bytesToHex(seed)))
+    }
+
+    /**
+     * Get wallet by id
+     *
+     * @param walletId Name of the wallet.
+     */
+    fun findWalletById(walletId: String): Wallet {
+        return walletStorage.findById(walletId)
     }
 
     /**
@@ -47,18 +65,87 @@ class WalletService(private val walletStorage: WalletStorage) {
         return seed
     }
 
-    // newDid(walletId: String, didAlias: String, issuer: Boolean): Did {
-    // - newDid(didAlias: String, didIdx: Int, seed: ByteArray, issuer: Boolean): Did
-    // - add did to wallet
+    /**
+     * Create new did
+     *
+     * @param walletId Name of the wallet.
+     * @param didAlias Name of the alias, by default is random UUID.
+     * @param issuer Add issuing and revocation keys, by default is false.
+     */
+    fun createDid(walletId: String, didAlias: String = UUID.randomUUID().toString(), issuer: Boolean = false): Did {
+        findWalletById(walletId)
+            .let { w ->
+                if (w.dids.any { it.alias.equals(didAlias, true) }) {
+                    throw Exception("Duplicated DID alias")
+                }
 
-    // getDidDocument(walletId: String, didAlias: String)
-    // --> getDidDocument(did: String): DidDocument
+                val newDid = dlt.newDid(didAlias, w.dids.size, BytesOps.hexToBytes(w.seed), issuer)
+                w.addDid(newDid)
 
-    // publishDid(walletId: String, didAlias: String)
-    // - publishDid(did: Did, seed: ByteArray) (operationId, operationHash) -> DltDidUpdate
-    // - flag did as published
+                walletStorage.update(w)
+                println("DID created")
 
-    // addKey(walletId: String, didAlias: String, keyId: String, keyTypeValue: Int)
-    // - addKey(did: Did, seed: ByteArray, keyId: String, keyTypeValue: Int) -> DltDidUpdate
-    // - update did in wallet
+                return newDid
+            }
+    }
+
+    fun listDids(walletId: String): List<Did> {
+        return walletStorage.listDids(walletId)
+    }
+
+    fun findDid(walletId: String, didAlias: String): Did {
+        return walletStorage.findDidByAlias(walletId, didAlias).orElseThrow{ Exception("Unable to find DID alias.") }
+    }
+
+    fun didAliasExists(walletId: String, didAlias: String): Boolean {
+        return walletStorage.findDidByAlias(walletId, didAlias).isPresent
+    }
+
+    /**
+     * Publish did
+     *
+     * @param walletId Name of the wallet.
+     * @param didAlias Name of the alias, by default is random UUID.
+     */
+    fun publishDid(walletId: String, didAlias: String): Did {
+        findWalletById(walletId)
+            .let { w ->
+                w.dids.firstOrNull { it.alias.equals(didAlias, true) }
+                    ?.let { d ->
+                        val dltDidUpdate = dlt.publishDid(d, w.seed.toByteArray())
+
+                        d.publishedStatus = AtalaOperationStatus.PENDING_SUBMISSION
+                        d.publishedOperationId = dltDidUpdate.operationId ?: throw Exception("Unable to find operation id.")
+                        d.operationHash = dltDidUpdate.did?.operationHash ?: throw Exception("Unable to find operation hash.")
+
+                        walletStorage.update(w)
+                        println("DID '$didAlias' published.")
+
+                        return d
+                    }
+                    ?:  throw Exception("Did alias '$didAlias' not found")
+            }
+    }
+
+    @OptIn(PrismSdkInternal::class)
+    fun getDidDocument(didAlias: String): DIDData {
+        return dlt.getDidDocument(didAlias)
+    }
+
+    fun getDidDocumentStatus(didAlias: String): PrismDidState {
+        return dlt.getDidState(didAlias)
+    }
+
+    fun getDidPublishOperationStatus(walletId: String, didAlias: String): AtalaOperationStatusEnum {
+        return getDidPublishOperationStatus(findWalletById(walletId), didAlias)
+    }
+
+    fun getDidPublishOperationStatus(wallet: Wallet, didAlias: String): AtalaOperationStatusEnum {
+        wallet.dids.firstOrNull { it.alias.equals(didAlias, true) }
+            ?.let { d ->
+                val publishOperationInfo = dlt.getDidPublishOperationInfo(d)
+                d.publishedStatus = publishOperationInfo
+                return publishOperationInfo
+            } ?:  throw Exception("Did alias '$didAlias' not found")
+    }
 }

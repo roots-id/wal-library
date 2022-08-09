@@ -8,7 +8,9 @@ import io.iohk.atala.prism.api.CredentialClaim
 import io.iohk.atala.prism.api.KeyGenerator
 import io.iohk.atala.prism.api.VerificationResult
 import io.iohk.atala.prism.api.models.AtalaOperationId
+import io.iohk.atala.prism.api.models.AtalaOperationInfo
 import io.iohk.atala.prism.api.models.AtalaOperationStatus
+import io.iohk.atala.prism.api.models.AtalaOperationStatusEnum
 import io.iohk.atala.prism.api.node.NodeAuthApiImpl
 import io.iohk.atala.prism.api.node.NodePayloadGenerator
 import io.iohk.atala.prism.api.node.NodePublicApi
@@ -26,8 +28,9 @@ import kotlinx.serialization.json.*
 import pbandk.ByteArr
 import pbandk.json.encodeToJsonString
 
-class Dlt {
+private const val TESTNET_URL = "https://explorer.cardano-testnet.iohkdev.io/en/transaction?id="
 
+class Dlt {
     /**
      * Use this function to get the blockchain transaction ID associated with an operationID
      * @param operationId operation identifier
@@ -40,6 +43,32 @@ class Dlt {
             node.GetOperationInfo(GetOperationInfoRequest(ByteArr(operationId.value())))
         }
         return response.transactionId
+    }
+
+    fun getDidPublishOperationInfo(did: Did): AtalaOperationStatusEnum {
+        val operationId = did.publishedOperationId
+
+        if("" == operationId) {
+            throw Exception("Unable to find operation information because operation id was empty.")
+        }
+
+        val operationInfo = getOperationInfo(AtalaOperationId.fromHex(operationId))
+        operationInfo.transactionId?.let { BlockchainTxLogEntry(it, BlockchainTxAction.PUBLISH_DID,
+            "${TESTNET_URL}$it", did.alias) }
+
+        return operationInfo.status
+    }
+
+    /**
+     * Get operation information using the operationId
+     *
+     * @param operationId operation identifier
+     * @return operation information from the blockchain transaction
+     */
+    private fun getOperationInfo(operationId: AtalaOperationId): AtalaOperationInfo {
+        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
+
+        return runBlocking { nodeAuthApi.getOperationInfo(operationId) }
     }
 
     /**
@@ -170,7 +199,7 @@ class Dlt {
         } else {
             PrismDid.buildLongFormFromMasterPublicKey(masterKeyPair.publicKey)
         }
-        return Did(didAlias, didIdx, unpublishedDid.asCanonical().did.toString(), unpublishedDid.did.toString(), "", keyPaths)
+        return Did(didAlias, didIdx, unpublishedDid.asCanonical().did.toString(), unpublishedDid.did.toString(), keyPaths)
     }
 
     /**

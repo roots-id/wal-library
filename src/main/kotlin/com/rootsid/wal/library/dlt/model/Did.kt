@@ -1,5 +1,7 @@
 package com.rootsid.wal.library.dlt.model
 
+import io.iohk.atala.prism.api.models.AtalaOperationStatus
+import io.iohk.atala.prism.api.models.AtalaOperationStatusEnum
 import kotlinx.serialization.Serializable
 
 /**
@@ -19,6 +21,8 @@ data class Did(
     val didIdx: Int,
     val uriCanonical: String,
     val uriLongForm: String,
+    var keyPaths: MutableList<KeyPath> = mutableListOf(),
     var operationHash: String = "",
-    var keyPaths: MutableList<KeyPath> = mutableListOf()
+    var publishedStatus: AtalaOperationStatusEnum = AtalaOperationStatus.UNKNOWN_OPERATION,
+    var publishedOperationId: String = ""
 )
