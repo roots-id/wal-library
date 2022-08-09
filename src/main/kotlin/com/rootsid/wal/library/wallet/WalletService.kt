@@ -7,6 +7,8 @@ import com.rootsid.wal.library.mongoimpl.document.WalletDocument
 import com.rootsid.wal.library.wallet.model.Wallet
 import com.rootsid.wal.library.wallet.model.addDid
 import com.rootsid.wal.library.wallet.storage.WalletStorage
+import io.iohk.atala.prism.api.models.AtalaOperationStatus
+import io.iohk.atala.prism.api.models.AtalaOperationStatusEnum
 import io.iohk.atala.prism.api.node.PrismDidState
 import io.iohk.atala.prism.common.PrismSdkInternal
 import io.iohk.atala.prism.crypto.derivation.KeyDerivation
@@ -111,14 +113,17 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
                 w.dids.firstOrNull { it.alias.equals(didAlias, true) }
                     ?.let { d ->
                         val dltDidUpdate = dlt.publishDid(d, w.seed.toByteArray())
-                        d.operationHash = dltDidUpdate.operationId ?: "N/A"
+
+                        d.publishedStatus = AtalaOperationStatus.PENDING_SUBMISSION
+                        d.publishedOperationId = dltDidUpdate.operationId ?: throw Exception("Unable to find operation id.")
+                        d.operationHash = dltDidUpdate.did?.operationHash ?: throw Exception("Unable to find operation hash.")
 
                         walletStorage.update(w)
                         println("DID '$didAlias' published.")
 
                         return d
                     }
-                    ?:  throw Exception("DidAlias '$didAlias' not found")
+                    ?:  throw Exception("Did alias '$didAlias' not found")
             }
     }
 
@@ -129,5 +134,18 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
 
     fun getDidDocumentStatus(didAlias: String): PrismDidState {
         return dlt.getDidState(didAlias)
+    }
+
+    fun getDidPublishOperationStatus(walletId: String, didAlias: String): AtalaOperationStatusEnum {
+        return getDidPublishOperationStatus(findWalletById(walletId), didAlias)
+    }
+
+    fun getDidPublishOperationStatus(wallet: Wallet, didAlias: String): AtalaOperationStatusEnum {
+        wallet.dids.firstOrNull { it.alias.equals(didAlias, true) }
+            ?.let { d ->
+                val publishOperationInfo = dlt.getDidPublishOperationInfo(d)
+                d.publishedStatus = publishOperationInfo
+                return publishOperationInfo
+            } ?:  throw Exception("Did alias '$didAlias' not found")
     }
 }
