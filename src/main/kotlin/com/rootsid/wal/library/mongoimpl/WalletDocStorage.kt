@@ -2,11 +2,13 @@ package com.rootsid.wal.library.mongoimpl
 
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
+import com.rootsid.wal.library.dlt.model.Did
 import com.rootsid.wal.library.mongoimpl.config.DefaultMongoDbConn
 import com.rootsid.wal.library.mongoimpl.document.WalletDocument
 import com.rootsid.wal.library.wallet.model.Wallet
 import com.rootsid.wal.library.wallet.storage.WalletStorage
 import org.litote.kmongo.*
+import java.util.*
 
 
 class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wallet") : WalletStorage {
@@ -48,11 +50,11 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
     /**
      * Find wallet
      *
-     * @param name name of the wallet to find
+     * @param walletId name of the wallet to find
      * @return wallet data object
      */
-    override fun findByName(name: String): Wallet {
-        return walletCollection.findOne(Wallet::_id eq name) ?: throw Exception("Wallet '$name' not found.")
+    override fun findById(walletId: String): Wallet {
+        return walletCollection.findOne(Wallet::_id eq walletId) ?: throw Exception("Wallet '$walletId' not found.")
     }
 
     /**
@@ -67,24 +69,34 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
     /**
      * Wallet exists
      *
-     * @param name name of the wallet to find
+     * @param walletId name of the wallet to find
      * @return true if the wallet was found
      */
-    override fun exists(name: String): Boolean {
-        val wallet = walletCollection.findOne("{_id:'$name'}")
+    override fun exists(walletId: String): Boolean {
+        val wallet = walletCollection.findOne("{_id:'$walletId'}")
         return wallet != null
+    }
+
+    override fun findDidByAlias(walletId: String, didAlias: String): Optional<Did> {
+        return Optional.ofNullable(
+            walletCollection.findOne("{_id:'$walletId','dids':{${MongoOperator.elemMatch}: {'alias':'$didAlias'}}}")
+                ?.dids?.firstOrNull { it.alias.equals(didAlias, true) })
+    }
+
+    override fun listDids(walletId: String): List<Did> {
+        return findById(walletId)?.dids
     }
 
     /**
      * Did alias exists
      *
      * @param db MongoDB Client
-     * @param walletName name of the wallet storing the did
+     * @param walletId name of the wallet storing the did
      * @param didAlias alias of the did
      * @return true if the did was found
      */
-    fun didAliasExists(walletName: String, didAlias: String): Boolean {
-        val wallet = walletCollection.findOne("{_id:'$walletName','dids':{${MongoOperator.elemMatch}: {'alias':'$didAlias'}}}")
+    fun didAliasExists(walletId: String, didAlias: String): Boolean {
+        val wallet = walletCollection.findOne("{_id:'$walletId','dids':{${MongoOperator.elemMatch}: {'alias':'$didAlias'}}}")
         return wallet != null
     }
 
@@ -92,14 +104,14 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
      * Key id exists
      *
      * @param db MongoDB Client
-     * @param walletName name of the wallet storing the did
+     * @param walletId name of the wallet storing the did
      * @param didAlias alias of the did
      * @param keyId key identifier
      * @return true if the keyId was found
      */
-    fun keyIdExists(walletName: String, didAlias: String, keyId: String): Boolean {
+    fun keyIdExists(walletId: String, didAlias: String, keyId: String): Boolean {
         val wallet =
-            walletCollection.findOne("{_id:'$walletName','dids':{${MongoOperator.elemMatch}: {'alias':'$didAlias'}}, 'dids.keyPairs.keyId':'$keyId'}")
+            walletCollection.findOne("{_id:'$walletId','dids':{${MongoOperator.elemMatch}: {'alias':'$didAlias'}}, 'dids.keyPairs.keyId':'$keyId'}")
         return wallet != null
     }
 
@@ -123,8 +135,8 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
      * @param credentialAlias credential alias to find
      * @return true if the did was found
      */
-    fun credentialAliasExists(walletName: String, credentialAlias: String): Boolean {
-        val wallet = walletCollection.findOne("{_id:'$walletName','credentials':{${MongoOperator.elemMatch}: {'alias':'$credentialAlias'}}}")
+    fun credentialAliasExists(walletId: String, credentialAlias: String): Boolean {
+        val wallet = walletCollection.findOne("{_id:'$walletId','credentials':{${MongoOperator.elemMatch}: {'alias':'$credentialAlias'}}}")
         return wallet != null
     }
 }
