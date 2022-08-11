@@ -5,8 +5,8 @@ package com.rootsid.wal.library
  *
  * @constructor Create empty Constant
  */
-object Config {
+object Constant {
     const val MNEMONIC_SEPARATOR = ","
     const val TESTNET_URL = "https://explorer.cardano-testnet.iohkdev.io/en/transaction?id="
-    var DB_NAME = "wal"
+    const val DB_NAME = "wal"
 }
