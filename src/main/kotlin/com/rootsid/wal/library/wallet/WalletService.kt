@@ -94,7 +94,7 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
     }
 
     fun findDid(walletId: String, didAlias: String): Did {
-        return walletStorage.findDidByAlias(walletId, didAlias).orElseThrow{ Exception("Unable to find DID alias.") }
+        return walletStorage.findDidByAlias(walletId, didAlias).orElseThrow { Exception("Unable to find DID alias.") }
     }
 
     fun didAliasExists(walletId: String, didAlias: String): Boolean {
@@ -112,7 +112,7 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
             .let { w ->
                 w.dids.firstOrNull { it.alias.equals(didAlias, true) }
                     ?.let { d ->
-                        val dltDidUpdate = dlt.publishDid(d, w.seed.toByteArray())
+                        val dltDidUpdate = dlt.publishDid(d, BytesOps.hexToBytes(w.seed))
 
                         d.publishedStatus = AtalaOperationStatus.PENDING_SUBMISSION
                         d.publishedOperationId = dltDidUpdate.operationId ?: throw Exception("Unable to find operation id.")
@@ -123,7 +123,7 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
 
                         return d
                     }
-                    ?:  throw Exception("Did alias '$didAlias' not found")
+                    ?: throw Exception("Did alias '$didAlias' not found")
             }
     }
 
@@ -146,6 +146,6 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
                 val publishOperationInfo = dlt.getDidPublishOperationInfo(d)
                 d.publishedStatus = publishOperationInfo
                 return publishOperationInfo
-            } ?:  throw Exception("Did alias '$didAlias' not found")
+            } ?: throw Exception("Did alias '$didAlias' not found")
     }
 }
