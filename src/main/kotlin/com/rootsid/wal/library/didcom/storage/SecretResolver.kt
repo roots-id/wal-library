@@ -1,4 +1,4 @@
-package com.rootsid.wal.library
+package com.rootsid.wal.library.didcom.storage
 
 import org.didcommx.didcomm.secret.Secret
 import org.didcommx.didcomm.secret.SecretResolverEditable
