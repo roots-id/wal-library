@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.rootsid.wal"
-version = "2.0.0"
+version = "2.0.1"
 java.sourceCompatibility = JavaVersion.VERSION_11
 
 repositories {
@@ -30,8 +30,8 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.6.10")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0-native-mt")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4-native-mt")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.3")
     implementation("org.litote.kmongo:kmongo:4.5.0")
 
     // needed for cryptography primitives implementation
@@ -54,7 +54,7 @@ dependencies {
     implementation("org.didcommx:peerdid:0.3.0")
 
     // Test
-    testImplementation("org.junit.jupiter:junit-jupiter:5.8.2")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.9.0")
 }
 
 publishing {
