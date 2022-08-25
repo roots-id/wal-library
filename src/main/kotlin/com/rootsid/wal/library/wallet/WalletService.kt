@@ -33,6 +33,13 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
     }
 
     /**
+     * List wallets
+     */
+    fun listWallets(): List<Wallet> {
+        return walletStorage.list()
+    }
+
+    /**
      * Get wallet by id
      *
      * @param walletId Name of the wallet.
