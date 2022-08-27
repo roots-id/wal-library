@@ -9,8 +9,6 @@ import kotlinx.serialization.Serializable
  * @property didIdx
  * @property keyTypeValue
  * @property keyIdx
- * @property privateKey
- * @property publicKey
  * @property revoked
  * @constructor Create empty Key pair
  */
