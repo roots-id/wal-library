@@ -49,6 +49,15 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
     }
 
     /**
+     * Generate random mnemonic
+     *
+     * @return mnemonic
+     */
+    fun generateMnemonic(): String {
+        return KeyDerivation.randomMnemonicCode().words.joinToString(Constant.MNEMONIC_SEPARATOR)
+    }
+
+    /**
      * Generate seed
      *
      * @param mnemonic Mnemonic phrase, separated by Config.MNEMONIC_SEPARATOR. If empty, a random one will be generated
