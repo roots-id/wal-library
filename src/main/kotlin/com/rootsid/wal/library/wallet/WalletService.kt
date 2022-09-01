@@ -15,6 +15,7 @@ import io.iohk.atala.prism.crypto.derivation.KeyDerivation
 import io.iohk.atala.prism.crypto.derivation.MnemonicCode
 import io.iohk.atala.prism.crypto.util.BytesOps
 import io.iohk.atala.prism.protos.DIDData
+import kotlinx.serialization.json.JsonObject
 import java.util.*
 
 class WalletService(private val walletStorage: WalletStorage, private val dlt: Dlt) {
@@ -144,12 +145,20 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
     }
 
     @OptIn(PrismSdkInternal::class)
-    fun getDidDocument(didAlias: String): DIDData {
-        return dlt.getDidDocument(didAlias)
+    fun getDidDocument(didUri: String): DIDData {
+        return dlt.getDidDocument(didUri)
     }
 
-    fun getDidDocumentStatus(didAlias: String): PrismDidState {
-        return dlt.getDidState(didAlias)
+    fun getDidDocumentJson(didUri: String): String {
+        return dlt.getDidDocumentJson(didUri)
+    }
+
+    fun getDidDocumentStatus(didUri: String): PrismDidState {
+        return dlt.getDidState(didUri)
+    }
+
+    fun getDidDocumentW3C(didUri: String): JsonObject {
+        return dlt.getDidDocumentW3C(didUri)
     }
 
     fun getDidPublishOperationStatus(walletId: String, didAlias: String): AtalaOperationStatusEnum {

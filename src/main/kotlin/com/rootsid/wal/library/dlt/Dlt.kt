@@ -16,7 +16,9 @@ import io.iohk.atala.prism.api.node.NodePayloadGenerator
 import io.iohk.atala.prism.api.node.NodePublicApi
 import io.iohk.atala.prism.api.node.PrismDidState
 import io.iohk.atala.prism.common.PrismSdkInternal
+import io.iohk.atala.prism.credentials.json.JsonBasedCredential
 import io.iohk.atala.prism.crypto.EC
+import io.iohk.atala.prism.crypto.MerkleInclusionProof
 import io.iohk.atala.prism.crypto.Sha256Digest
 import io.iohk.atala.prism.crypto.keys.ECKeyPair
 import io.iohk.atala.prism.identity.*
@@ -24,6 +26,7 @@ import io.iohk.atala.prism.protos.*
 import io.ipfs.multibase.Base58
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import pbandk.ByteArr
 import pbandk.json.encodeToJsonString
@@ -48,13 +51,19 @@ class Dlt {
     fun getDidPublishOperationInfo(did: Did): AtalaOperationStatusEnum {
         val operationId = did.publishedOperationId
 
-        if("" == operationId) {
+        if ("" == operationId) {
             throw Exception("Unable to find operation information because operation id was empty.")
         }
 
         val operationInfo = getOperationInfo(AtalaOperationId.fromHex(operationId))
-        operationInfo.transactionId?.let { BlockchainTxLogEntry(it, BlockchainTxAction.PUBLISH_DID,
-            "${TESTNET_URL}$it", did.alias) }
+        operationInfo.transactionId?.let {
+            BlockchainTxLogEntry(
+                it,
+                BlockchainTxAction.PUBLISH_DID,
+                "${TESTNET_URL}$it",
+                did.alias
+            )
+        }
 
         return operationInfo.status
     }
@@ -104,7 +113,6 @@ class Dlt {
      * @param operationId operation Identifier
      */
     private fun waitUntilConfirmed(nodePublicApi: NodePublicApi, operationId: AtalaOperationId) {
-
         var status = runBlocking {
             nodePublicApi.getOperationInfo(operationId).status
         }
@@ -157,7 +165,10 @@ class Dlt {
     fun newDid(didAlias: String, didIdx: Int, seed: ByteArray, issuer: Boolean): Did {
         val keyPaths = mutableListOf<KeyPath>()
         val masterKeyPair = KeyGenerator.deriveKeyFromFullPath(
-            seed, didIdx, MasterKeyUsage, 0
+            seed,
+            didIdx,
+            MasterKeyUsage,
+            0
         )
         val masterKeyPathData = KeyPath(
             PrismDid.DEFAULT_MASTER_KEY_ID,
@@ -170,7 +181,10 @@ class Dlt {
 
         val unpublishedDid = if (issuer) {
             val issuingKeyPair = KeyGenerator.deriveKeyFromFullPath(
-                seed, didIdx, IssuingKeyUsage, 0
+                seed,
+                didIdx,
+                IssuingKeyUsage,
+                0
             )
             val issuingKeyPathData = KeyPath(
                 PrismDid.DEFAULT_ISSUING_KEY_ID,
@@ -182,7 +196,10 @@ class Dlt {
             keyPaths.add(issuingKeyPathData)
 
             val revocationKeyPair = KeyGenerator.deriveKeyFromFullPath(
-                seed, didIdx, RevocationKeyUsage, 0
+                seed,
+                didIdx,
+                RevocationKeyUsage,
+                0
             )
             val revocationKeyPathData = KeyPath(
                 PrismDid.DEFAULT_REVOCATION_KEY_ID,
@@ -194,7 +211,9 @@ class Dlt {
             keyPaths.add(revocationKeyPathData)
 
             PrismDid.buildExperimentalLongFormFromKeys(
-                masterKeyPair.publicKey, issuingKeyPair.publicKey, revocationKeyPair.publicKey
+                masterKeyPair.publicKey,
+                issuingKeyPair.publicKey,
+                revocationKeyPair.publicKey
             )
         } else {
             PrismDid.buildLongFormFromMasterPublicKey(masterKeyPair.publicKey)
@@ -268,7 +287,7 @@ class Dlt {
         var didDocW3C = mutableMapOf<String, JsonElement>(
             "@context" to JsonArray(listOf(JsonPrimitive("https://www.w3.org/ns/did/v1"))),
             "id" to JsonPrimitive(did),
-            "assertionMethod" to JsonArray(listOf(JsonPrimitive(did + "#master0"))),
+            "assertionMethod" to JsonArray(listOf(JsonPrimitive(did + "#master0")))
         )
         var verificationMethods: MutableList<JsonObject> = ArrayList()
         // TODO parsing a string is not the best way to access the object. Need to figure out
@@ -345,7 +364,6 @@ class Dlt {
      */
     @OptIn(PrismSdkInternal::class)
     fun addKey(did: Did, seed: ByteArray, keyId: String, keyTypeValue: Int): DltDidUpdate {
-
         val keyIdx = did.keyPaths.filter { it.keyTypeValue == keyTypeValue }.size
         val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
 
@@ -401,7 +419,6 @@ class Dlt {
      * @return DltDidUpdate (operationId, Updated Did)
      */
     fun revokeKey(did: Did, seed: ByteArray, keyId: String): DltDidUpdate {
-
         val keyPairList = did.keyPaths.filter { it.keyId == keyId }
         if (keyPairList.isNotEmpty()) {
             val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
@@ -533,24 +550,23 @@ class Dlt {
      * @param credentialAlias Alias of Credential to verify
      * @return Verification result
      */
-    // TODO: refactor to a single verifyCredential function
-//    fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): List<String> {
-//        val credentials = wallet.issuedCredentials.filter { it.alias == credentialAlias }
-//        if (credentials.isNotEmpty()) {
-//            val credential = credentials[0]
-//            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
-//            val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
-//            // Use encodeDefaults to generate empty siblings field on proof
-//            val format = Json { encodeDefaults = true }
-//            val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
-//
-//            return runBlocking {
-//                nodeAuthApi.verify(signed, proof).toMessageArray()
-//            }
-//        } else {
-//            throw Exception("Credential '$credentialAlias' not found.")
-//        }
-//    }
+    fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): List<String> {
+        val credentials = wallet.issuedCredentials.filter { it.alias == credentialAlias }
+        if (credentials.isNotEmpty()) {
+            val credential = credentials[0]
+            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
+            val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
+            // Use encodeDefaults to generate empty siblings field on proof
+            val format = Json { encodeDefaults = true }
+            val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
+
+            return runBlocking {
+                nodeAuthApi.verify(signed, proof).toMessageArray()
+            }
+        } else {
+            throw Exception("Credential '$credentialAlias' not found.")
+        }
+    }
 
     private fun VerificationResult.toMessageArray(): List<String> {
         val messages = mutableListOf<String>()
@@ -567,24 +583,23 @@ class Dlt {
      * @param credentialAlias Alias of credential to verify
      * @return Verification result
      */
-    // TODO: refactor to a single verifyCredential function
-//    fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): List<String> {
-//        val credentials = wallet.importedCredentials.filter { it.alias == credentialAlias }
-//        if (credentials.isNotEmpty()) {
-//            val credential = credentials[0]
-//            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
-//            val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
-//            // Use encodeDefaults to generate empty siblings field on proof
-//            val format = Json { encodeDefaults = true }
-//            val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
-//
-//            return runBlocking {
-//                nodeAuthApi.verify(signed, proof).toMessageArray()
-//            }
-//        } else {
-//            throw Exception("Credential '$credentialAlias' not found.")
-//        }
-//    }
+    fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): List<String> {
+        val credentials = wallet.importedCredentials.filter { it.alias == credentialAlias }
+        if (credentials.isNotEmpty()) {
+            val credential = credentials[0]
+            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
+            val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
+            // Use encodeDefaults to generate empty siblings field on proof
+            val format = Json { encodeDefaults = true }
+            val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
+
+            return runBlocking {
+                nodeAuthApi.verify(signed, proof).toMessageArray()
+            }
+        } else {
+            throw Exception("Credential '$credentialAlias' not found.")
+        }
+    }
 
     /**
      * Grpc config
@@ -593,9 +608,11 @@ class Dlt {
      */
     class GrpcConfig {
         companion object {
+            var protocol: String = System.getenv("PRISM_NODE_PROTOCOL") ?: "http"
             var host: String = System.getenv("PRISM_NODE_HOST") ?: ""
             var port: String = System.getenv("PRISM_NODE_PORT") ?: "50053"
-            fun options() = GrpcOptions("https", host, port.toInt())
+            var token: String? = System.getenv("PRISM_NODE_PORT") ?: null
+            fun options() = GrpcOptions(protocol, host, port.toInt(), token)
         }
     }
 }
