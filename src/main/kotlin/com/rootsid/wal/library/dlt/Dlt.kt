@@ -609,7 +609,7 @@ class Dlt {
             var protocol: String = System.getenv("PRISM_NODE_PROTOCOL") ?: "http"
             var host: String = System.getenv("PRISM_NODE_HOST") ?: ""
             var port: String = System.getenv("PRISM_NODE_PORT") ?: "50053"
-            var token: String? = System.getenv("PRISM_NODE_PORT") ?: null
+            var token: String? = System.getenv("PRISM_NODE_TOKEN") ?: null
             fun options() = GrpcOptions(protocol, host, port.toInt(), token)
         }
     }
