@@ -22,6 +22,7 @@ data class Did(
     val uriCanonical: String,
     val uriLongForm: String,
     var keyPaths: MutableList<KeyPath> = mutableListOf(),
+    var operationId: String = "",
     var operationHash: String = "",
     var publishedStatus: AtalaOperationStatusEnum = AtalaOperationStatus.UNKNOWN_OPERATION,
     var publishedOperationId: String = ""

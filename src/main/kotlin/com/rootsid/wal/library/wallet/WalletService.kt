@@ -126,19 +126,19 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
      */
     fun publishDid(walletId: String, didAlias: String): Did {
         findWalletById(walletId)
-            .let { w ->
-                w.dids.firstOrNull { it.alias.equals(didAlias, true) }
-                    ?.let { d ->
-                        val dltDidUpdate = dlt.publishDid(d, BytesOps.hexToBytes(w.seed))
+            .let { wallet ->
+                wallet.dids.firstOrNull { it.alias.equals(didAlias, true) }
+                    ?.let { did ->
+                        val didUpdate = dlt.publishDid(did, BytesOps.hexToBytes(wallet.seed))
 
-                        d.publishedStatus = AtalaOperationStatus.PENDING_SUBMISSION
-                        d.publishedOperationId = dltDidUpdate.operationId ?: throw Exception("Unable to find operation id.")
-                        d.operationHash = dltDidUpdate.did?.operationHash ?: throw Exception("Unable to find operation hash.")
+                        did.publishedStatus = AtalaOperationStatus.PENDING_SUBMISSION
+                        did.operationHash = didUpdate.operationHash ?: throw Exception("Unable to find operation id.")
+                        did.operationId = didUpdate.operationId ?: throw Exception("Unable to find operation id.")
 
-                        walletStorage.update(w)
+                        walletStorage.update(wallet)
                         println("DID '$didAlias' published.")
 
-                        return d
+                        return did
                     }
                     ?: throw Exception("Did alias '$didAlias' not found")
             }

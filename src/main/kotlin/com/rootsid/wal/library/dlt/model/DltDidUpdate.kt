@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
  * @constructor Create Dlt did update
  */
 @Serializable
+@Deprecated("don't use it")
 data class DltDidUpdate(
     val operationId: String?,
     val did: Did?

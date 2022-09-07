@@ -27,6 +27,8 @@ data class IssuedCredential(
     var verifiedCredential: VerifiedCredential,
     // Required for revocation
     var batchId: String,
+    // To retrieve the operation status from the node
+    var operationId: String?,
     // Required for revocation
     var credentialHash: String,
     // Required for revocation

@@ -50,11 +50,9 @@ class Dlt {
 
     fun getDidPublishOperationInfo(did: Did): AtalaOperationStatusEnum {
         val operationId = did.publishedOperationId
-
         if ("" == operationId) {
             throw Exception("Unable to find operation information because operation id was empty.")
         }
-
         val operationInfo = getOperationInfo(AtalaOperationId.fromHex(operationId))
         operationInfo.transactionId?.let {
             BlockchainTxLogEntry(
@@ -64,7 +62,6 @@ class Dlt {
                 did.alias
             )
         }
-
         return operationInfo.status
     }
 
@@ -93,7 +90,6 @@ class Dlt {
         var status = runBlocking {
             nodePublicApi.getOperationInfo(operationId).status
         }
-
         while (status == AtalaOperationStatus.PENDING_SUBMISSION) {
             println("Current operation status: ${AtalaOperationStatus.asString(status)}\n")
             Thread.sleep(10000)
@@ -116,7 +112,6 @@ class Dlt {
         var status = runBlocking {
             nodePublicApi.getOperationInfo(operationId).status
         }
-
         while (status != AtalaOperationStatus.CONFIRMED_AND_APPLIED &&
             status != AtalaOperationStatus.CONFIRMED_AND_REJECTED
         ) {
@@ -325,7 +320,7 @@ class Dlt {
      * @param didAlias seed to generate the keys
      * @return DltDidUpdate (operationId, Updated Did)
      */
-    fun publishDid(did: Did, seed: ByteArray): DltDidUpdate {
+    fun publishDid(did: Did, seed: ByteArray): Did {
         val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
         val prismDid = PrismDid.fromString(did.uriLongForm)
         // Key pairs to get private keys
@@ -350,7 +345,9 @@ class Dlt {
             )
         }
         did.operationHash = createDidInfo.operationHash.hexValue
-        return DltDidUpdate(createDidOperationId.hexValue(), did)
+        did.operationId = createDidOperationId.hexValue()
+
+        return did
     }
 
     /**
@@ -363,7 +360,7 @@ class Dlt {
      * @return DltDidUpdate (operationId, Updated Did)
      */
     @OptIn(PrismSdkInternal::class)
-    fun addKey(did: Did, seed: ByteArray, keyId: String, keyTypeValue: Int): DltDidUpdate {
+    fun addKey(did: Did, seed: ByteArray, keyId: String, keyTypeValue: Int): Did {
         val keyIdx = did.keyPaths.filter { it.keyTypeValue == keyTypeValue }.size
         val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
 
@@ -407,7 +404,8 @@ class Dlt {
         }
         did.operationHash = updateDidInfo.operationHash.hexValue
         did.keyPaths.add(newKeyPairData)
-        return DltDidUpdate(updateDidOperationId.hexValue(), did)
+        did.operationId = updateDidOperationId.hexValue()
+        return did
     }
 
     /**
@@ -418,7 +416,7 @@ class Dlt {
      * @param keyId key identifier to be revoked
      * @return DltDidUpdate (operationId, Updated Did)
      */
-    fun revokeKey(did: Did, seed: ByteArray, keyId: String): DltDidUpdate {
+    fun revokeKey(did: Did, seed: ByteArray, keyId: String): Did {
         val keyPairList = did.keyPaths.filter { it.keyId == keyId }
         if (keyPairList.isNotEmpty()) {
             val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
@@ -450,7 +448,8 @@ class Dlt {
             keyPairList[0].revoked = true
             // Update DID last operation hash
             did.operationHash = updateDidInfo.operationHash.hexValue
-            return DltDidUpdate(updateDidOperationId.hexValue(), did)
+            did.operationId = updateDidOperationId.hexValue()
+            return did
         } else {
             throw NoSuchElementException("Key identifier '$keyId' not found.")
         }
@@ -462,9 +461,9 @@ class Dlt {
      * @param issuerDid issuer did
      * @param seed seed to generate the keys
      * @param issuedCredential credential to be issued
-     * @return DltDidUpdate (operationId, Updated Did)
+     * @return Pair updated did and updated issued credential
      */
-    fun issueCredential(issuerDid: Did, seed: ByteArray, issuedCredential: IssuedCredential): DltDidUpdate {
+    fun issueCredential(issuerDid: Did, seed: ByteArray, issuedCredential: IssuedCredential): Pair<Did, IssuedCredential> {
         val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
         val claims = mutableListOf<CredentialClaim>()
         // Key pairs to get private keys
@@ -500,7 +499,8 @@ class Dlt {
         }
         // Update DID last operation hash
         issuerDid.operationHash = credentialsInfo.operationHash.hexValue
-        return DltDidUpdate(issueCredentialsOperationId.hexValue(), issuerDid)
+        issuedCredential.operationId = issueCredentialsOperationId.hexValue()
+        return Pair(issuerDid, issuedCredential)
     }
 
     /**
@@ -511,8 +511,7 @@ class Dlt {
      * @param seed seed to generate the keys
      * @return DltDidUpdate (operationId, Updated Did)
      */
-    // TODO: Check the Return type
-    fun revokeCredential(credential: IssuedCredential, issuerDid: Did, seed: ByteArray): DltDidUpdate {
+    fun revokeCredential(credential: IssuedCredential, issuerDid: Did, seed: ByteArray): Pair<Did, IssuedCredential> {
         val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
         // Key pairs to get private keys
         val revocationKeyPair = deriveKeyPair(issuerDid.keyPaths, seed, PrismDid.DEFAULT_REVOCATION_KEY_ID)
@@ -538,10 +537,9 @@ class Dlt {
             )
         }
         credential.revoked = true
-        return DltDidUpdate(revokeOperationId.hexValue(), issuerDid)
+        credential.operationId = revokeOperationId.hexValue()
+        return Pair(issuerDid, credential)
     }
-
-    // TODO: REFACTOR PENDING ON FUNCTIONS BELOW
 
     /**
      * Verify issued credential
