@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   build:
-    name: Compile and Test code
+    name: Compile and Test Code
     runs-on: ubuntu-latest
 
     steps:

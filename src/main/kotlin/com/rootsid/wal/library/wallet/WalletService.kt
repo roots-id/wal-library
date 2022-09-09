@@ -27,6 +27,10 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
      * @return a new wallet
      */
     fun createWallet(id: String, mnemonic: String, passphrase: String): Wallet {
+        if (walletStorage.exists(id)) {
+            throw RuntimeException("Duplicated Wallet identifier")
+        }
+
         val seed = generateSeed(mnemonic, passphrase)
         return walletStorage.insert(walletStorage.createWalletObject(id, BytesOps.bytesToHex(seed)))
     }
@@ -74,7 +78,7 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
                 mnemonicList = MnemonicCode(mnemonic.split(Constant.MNEMONIC_SEPARATOR).map { it.trim() })
                 seed = KeyDerivation.binarySeed(mnemonicList, passphrase)
             } catch (e: Exception) {
-                throw Exception("Invalid mnemonic phrase")
+                throw RuntimeException("Invalid mnemonic phrase")
             }
         }
         return seed
@@ -91,7 +95,7 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
         findWalletById(walletId)
             .let { w ->
                 if (w.dids.any { it.alias.equals(didAlias, true) }) {
-                    throw Exception("Duplicated DID alias")
+                    throw RuntimeException("Duplicated DID alias")
                 }
 
                 val newDid = dlt.newDid(didAlias, w.dids.size, BytesOps.hexToBytes(w.seed), issuer)
@@ -130,15 +134,15 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
                         val didUpdate = dlt.publishDid(did, BytesOps.hexToBytes(wallet.seed))
 
                         did.publishedStatus = AtalaOperationStatus.PENDING_SUBMISSION
-                        did.operationHash = didUpdate.operationHash ?: throw Exception("Unable to find operation id.")
-                        did.operationId = didUpdate.operationId ?: throw Exception("Unable to find operation id.")
+                        did.operationHash = didUpdate.operationHash ?: throw RuntimeException("Unable to find operation id.")
+                        did.operationId = didUpdate.operationId ?: throw RuntimeException("Unable to find operation id.")
 
                         walletStorage.update(wallet)
                         println("DID '$didAlias' published.")
 
                         return did
                     }
-                    ?: throw Exception("Did alias '$didAlias' not found")
+                    ?: throw RuntimeException("Did alias '$didAlias' not found")
             }
     }
 
@@ -169,6 +173,6 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
                 val publishOperationInfo = dlt.getDidPublishOperationInfo(d)
                 d.publishedStatus = publishOperationInfo
                 return publishOperationInfo
-            } ?: throw Exception("Did alias '$didAlias' not found")
+            } ?: throw RuntimeException("Did alias '$didAlias' not found")
     }
 }

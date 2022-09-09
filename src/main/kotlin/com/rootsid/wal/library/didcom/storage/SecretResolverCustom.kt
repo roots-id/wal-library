@@ -4,47 +4,19 @@ import org.didcommx.didcomm.secret.Secret
 import org.didcommx.didcomm.secret.SecretResolverEditable
 import org.didcommx.didcomm.secret.jwkToSecret
 import org.didcommx.didcomm.secret.secretToJwk
-import org.didcommx.didcomm.utils.fromJsonToList
-import org.didcommx.didcomm.utils.toJson
-import java.io.File
 import java.util.*
-import kotlin.io.path.Path
-import kotlin.io.path.exists
 
-class SecretResolverCustom(private val filePath: String = "secrets.json") : SecretResolverEditable {
-
-    private val secrets: MutableMap<String, Secret>
-
-    init {
-        if (!Path(filePath).exists()) {
-            secrets = mutableMapOf()
-            save()
-        } else {
-            val secretsJson = File(filePath).readText()
-            secrets = if (secretsJson.isNotEmpty()) {
-                fromJsonToList(secretsJson).map { jwkToSecret(it) }.associate { it.kid to it }.toMutableMap()
-            } else {
-                mutableMapOf()
-            }
-        }
-    }
-
-    private fun save() {
-        val secretJson = toJson(secrets.values.map { secretToJwk(it) })
-        File(filePath).writeText(secretJson)
-    }
+class SecretResolverCustom(private val didComSecretStorage: DidComSecretStorage = SecretResolverFileSystemStorage()) :
+    SecretResolverEditable {
 
     override fun addKey(secret: Secret) {
-        secrets.put(secret.kid, secret)
-        save()
+        didComSecretStorage.insert(secret.kid, secretToJwk(secret))
     }
 
-    override fun getKids(): List<String> =
-        secrets.keys.toList()
-
     override fun findKey(kid: String): Optional<Secret> =
-        Optional.ofNullable(secrets.get(kid))
+        Optional.of(jwkToSecret(didComSecretStorage.findById(kid).secret))
 
-    override fun findKeys(kids: List<String>): Set<String> =
-        kids.intersect(secrets.keys)
+    override fun getKids(): List<String> = didComSecretStorage.listIds()
+
+    override fun findKeys(kids: List<String>): Set<String> = didComSecretStorage.findIdsIn(kids)
 }
