@@ -3,7 +3,6 @@ package com.rootsid.wal.library.wallet
 import com.rootsid.wal.library.Constant
 import com.rootsid.wal.library.dlt.Dlt
 import com.rootsid.wal.library.dlt.model.Did
-import com.rootsid.wal.library.mongoimpl.document.WalletDocument
 import com.rootsid.wal.library.wallet.model.Wallet
 import com.rootsid.wal.library.wallet.model.addDid
 import com.rootsid.wal.library.wallet.storage.WalletStorage
@@ -19,7 +18,6 @@ import kotlinx.serialization.json.JsonObject
 import java.util.*
 
 class WalletService(private val walletStorage: WalletStorage, private val dlt: Dlt) {
-
     /**
      * New wallet
      *
@@ -30,7 +28,7 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
      */
     fun createWallet(id: String, mnemonic: String, passphrase: String): Wallet {
         val seed = generateSeed(mnemonic, passphrase)
-        return walletStorage.insert(WalletDocument(id, BytesOps.bytesToHex(seed)))
+        return walletStorage.insert(walletStorage.createWalletObject(id, BytesOps.bytesToHex(seed)))
     }
 
     /**

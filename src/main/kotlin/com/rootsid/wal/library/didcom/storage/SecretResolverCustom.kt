@@ -7,11 +7,11 @@ import org.didcommx.didcomm.secret.secretToJwk
 import org.didcommx.didcomm.utils.fromJsonToList
 import org.didcommx.didcomm.utils.toJson
 import java.io.File
-import java.util.Optional
+import java.util.*
 import kotlin.io.path.Path
 import kotlin.io.path.exists
 
-class SecretResolver(private val filePath: String = "secrets.json") : SecretResolverEditable {
+class SecretResolverCustom(private val filePath: String = "secrets.json") : SecretResolverEditable {
 
     private val secrets: MutableMap<String, Secret>
 

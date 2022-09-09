@@ -1,7 +1,7 @@
 package com.rootsid.wal.library.didcom
 
 import com.rootsid.wal.library.didcom.model.UnpackResult
-import com.rootsid.wal.library.didcom.storage.SecretResolver
+import com.rootsid.wal.library.didcom.storage.SecretResolverCustom
 import org.didcommx.didcomm.DIDComm
 import org.didcommx.didcomm.message.Message
 import org.didcommx.didcomm.model.PackEncryptedParams
@@ -13,14 +13,14 @@ import org.didcommx.didcomm.secret.jwkToSecret
 import org.didcommx.didcomm.utils.divideDIDFragment
 import org.didcommx.didcomm.utils.toJson
 import org.didcommx.peerdid.*
-import java.util.UUID
+import java.util.*
 
 fun createPeerDID(
     authKeysCount: Int = 1,
     agreementKeysCount: Int = 1,
     serviceEndpoint: String? = null,
     serviceRoutingKeys: List<String>,
-    secretResolver: SecretResolver
+    secretResolver: SecretResolverCustom
 ): String {
     // 1. generate keys in JWK format
     val x25519keyPairs = (1..agreementKeysCount).map { generateX25519Keys() }
@@ -91,7 +91,7 @@ fun pack(
     from: String? = null,
     signFrom: String? = null,
     protectSender: Boolean = true,
-    secretsResolver: SecretResolver
+    secretsResolver: SecretResolverCustom
 ): PackEncryptedResult {
     val didComm = DIDComm(DIDDocResolverPeerDID(), secretsResolver)
     val message = Message.builder(
@@ -109,7 +109,7 @@ fun pack(
     return didComm.packEncrypted(params)
 }
 
-fun unpack(packedMsg: String, secretResolver: SecretResolver): UnpackResult {
+fun unpack(packedMsg: String, secretResolver: SecretResolverCustom): UnpackResult {
     val didComm = DIDComm(DIDDocResolverPeerDID(), secretResolver)
     val res = didComm.unpack(UnpackParams.Builder(packedMsg).build())
     val msg = res.message.body["msg"].toString()

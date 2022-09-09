@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.rootsid.wal"
-version = "2.0.1"
+version = project.property("version")!!
 java.sourceCompatibility = JavaVersion.VERSION_11
 
 repositories {
