@@ -20,6 +20,8 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
         this.walletCollection = mongoConn.getCollection<WalletDocument>(collectionName)
     }
 
+    override fun createWalletObject(walletId: String, seed: String): Wallet = WalletDocument(walletId, seed)
+
     /**
      * Insert wallet
      *
@@ -77,20 +79,19 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
         return wallet != null
     }
 
-    override fun findDidByAlias(walletId: String, didAlias: String): Optional<Did> {
+    override fun findDidByAlias(walletId: String, alias: String): Optional<Did> {
         return Optional.ofNullable(
-            walletCollection.findOne("{_id:'$walletId','dids':{${MongoOperator.elemMatch}: {'alias':'$didAlias'}}}")
-                ?.dids?.firstOrNull { it.alias.equals(didAlias, true) })
+            walletCollection.findOne("{_id:'$walletId','dids':{${MongoOperator.elemMatch}: {'alias':'$alias'}}}")
+                ?.dids?.firstOrNull { it.alias.equals(alias, true) })
     }
 
     override fun listDids(walletId: String): List<Did> {
-        return findById(walletId)?.dids
+        return findById(walletId).dids
     }
 
     /**
      * Did alias exists
      *
-     * @param db MongoDB Client
      * @param walletId name of the wallet storing the did
      * @param didAlias alias of the did
      * @return true if the did was found
@@ -103,7 +104,6 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
     /**
      * Key id exists
      *
-     * @param db MongoDB Client
      * @param walletId name of the wallet storing the did
      * @param didAlias alias of the did
      * @param keyId key identifier
@@ -118,7 +118,6 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
     /**
      * Issued credential alias exists
      *
-     * @param db MongoDB Client
      * @param issuedCredentialAlias credential alias to find
      * @return true if the did was found
      */
@@ -131,7 +130,6 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
     /**
      * Credential alias exists
      *
-     * @param db MongoDB Client
      * @param credentialAlias credential alias to find
      * @return true if the did was found
      */

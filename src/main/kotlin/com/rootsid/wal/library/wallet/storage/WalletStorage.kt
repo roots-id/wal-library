@@ -7,6 +7,8 @@ import java.util.*
 interface WalletStorage {
     fun insert(wallet: Wallet): Wallet
 
+    fun createWalletObject(walletId: String, seed: String) : Wallet
+
     fun update(wallet: Wallet): Boolean
 
     fun findById(walletId: String): Wallet
