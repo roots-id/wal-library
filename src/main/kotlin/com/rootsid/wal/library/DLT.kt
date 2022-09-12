@@ -78,7 +78,6 @@ private fun waitForSubmission(nodePublicApi: NodePublicApi, operationId: AtalaOp
  * @param operationId operation Identifier
  */
 private fun waitUntilConfirmed(nodePublicApi: NodePublicApi, operationId: AtalaOperationId) {
-
     var status = runBlocking {
         nodePublicApi.getOperationInfo(operationId).status
     }
@@ -156,7 +155,10 @@ fun newDid(wallet: Wallet, didAlias: String, issuer: Boolean): Wallet {
     val keyPairs = mutableListOf<KeyPair>()
     val seed = KeyDerivation.binarySeed(MnemonicCode(wallet.mnemonic), wallet.passphrase)
     val masterKeyPair = KeyGenerator.deriveKeyFromFullPath(
-        seed, didIdx, MasterKeyUsage, 0
+        seed,
+        didIdx,
+        MasterKeyUsage,
+        0
     )
     val masterKeyPairData = KeyPair(
         PrismDid.DEFAULT_MASTER_KEY_ID,
@@ -171,10 +173,16 @@ fun newDid(wallet: Wallet, didAlias: String, issuer: Boolean): Wallet {
 
     val unpublishedDid = if (issuer) {
         val issuingKeyPair = KeyGenerator.deriveKeyFromFullPath(
-            seed, didIdx, IssuingKeyUsage, 0
+            seed,
+            didIdx,
+            IssuingKeyUsage,
+            0
         )
         val revocationKeyPair = KeyGenerator.deriveKeyFromFullPath(
-            seed, didIdx, RevocationKeyUsage, 0
+            seed,
+            didIdx,
+            RevocationKeyUsage,
+            0
         )
         val issuingKeyPairData = KeyPair(
             PrismDid.DEFAULT_ISSUING_KEY_ID,
@@ -198,7 +206,9 @@ fun newDid(wallet: Wallet, didAlias: String, issuer: Boolean): Wallet {
         keyPairs.add(revocationKeyPairData)
 
         PrismDid.buildExperimentalLongFormFromKeys(
-            masterKeyPair.publicKey, issuingKeyPair.publicKey, revocationKeyPair.publicKey
+            masterKeyPair.publicKey,
+            issuingKeyPair.publicKey,
+            revocationKeyPair.publicKey
         )
     } else {
         PrismDid.buildLongFormFromMasterPublicKey(masterKeyPair.publicKey)
@@ -285,7 +295,7 @@ fun getDidDocumentW3C(did: String): JsonObject {
     var didDocW3C = mutableMapOf<String, JsonElement>(
         "@context" to JsonArray(listOf(JsonPrimitive("https://www.w3.org/ns/did/v1"))),
         "id" to JsonPrimitive(did),
-        "assertionMethod" to JsonArray(listOf(JsonPrimitive(did + "#master0"))),
+        "assertionMethod" to JsonArray(listOf(JsonPrimitive(did + "#master0")))
     )
     var verificationMethods: MutableList<JsonObject> = ArrayList()
     // TODO parsing a string is not the best way to access the object. Need to figure out
@@ -701,8 +711,13 @@ fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): List<Stri
  */
 class GrpcConfig {
     companion object {
+        var protocol: String = System.getenv("PRISM_NODE_PROTOCOL") ?: "http"
         var host: String = System.getenv("PRISM_NODE_HOST") ?: ""
         var port: String = System.getenv("PRISM_NODE_PORT") ?: "50053"
-        fun options() = GrpcOptions("https", host, port.toInt())
+        var token: String? = System.getenv("PRISM_NODE_TOKEN") ?: null
+        fun options(): GrpcOptions {
+            println("Connecting to $protocol://$host:$port")
+            return GrpcOptions(protocol, host, port.toInt(), token)
+        }
     }
 }
