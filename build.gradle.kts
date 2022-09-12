@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.rootsid.wal"
-version = "1.0.3-SNAPSHOT"
+version = "1.0.4-SNAPSHOT"
 java.sourceCompatibility = JavaVersion.VERSION_11
 
 repositories {
