@@ -15,8 +15,10 @@ interface Wallet {
     val _id: String // name of the wallet
     val seed: String
     var dids: MutableList<Did>
+
     // List of imported (Issued elsewhere)
     var importedCredentials: MutableList<ImportedCredential>
+
     // List of credentials issued by a DID from this wallet
     var issuedCredentials: MutableList<IssuedCredential>
 }
