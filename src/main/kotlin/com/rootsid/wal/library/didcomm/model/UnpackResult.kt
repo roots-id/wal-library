@@ -1,4 +1,4 @@
-package com.rootsid.wal.library.didcom.model
+package com.rootsid.wal.library.didcomm.model
 
 /**
  * Unpack result

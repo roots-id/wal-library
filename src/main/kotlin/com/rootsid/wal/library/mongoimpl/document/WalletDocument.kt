@@ -4,9 +4,7 @@ import com.rootsid.wal.library.dlt.model.Did
 import com.rootsid.wal.library.wallet.model.ImportedCredential
 import com.rootsid.wal.library.wallet.model.IssuedCredential
 import com.rootsid.wal.library.wallet.model.Wallet
-import kotlinx.serialization.Serializable
 
-@Serializable
 data class WalletDocument(
     override val _id: String,
     override val seed: String,

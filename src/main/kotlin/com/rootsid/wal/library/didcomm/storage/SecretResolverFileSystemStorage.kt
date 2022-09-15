@@ -1,7 +1,6 @@
-package com.rootsid.wal.library.didcom.storage
+package com.rootsid.wal.library.didcomm.storage
 
-//import com.rootsid.wal.library.didcom.model.createAnonymousObj
-import com.rootsid.wal.library.didcom.model.DidComSecret
+import com.rootsid.wal.library.didcomm.model.DidCommSecret
 import kotlinx.serialization.Contextual
 import org.didcommx.didcomm.secret.Secret
 import org.didcommx.didcomm.secret.jwkToSecret
@@ -13,7 +12,7 @@ import kotlin.collections.set
 import kotlin.io.path.Path
 import kotlin.io.path.exists
 
-class SecretResolverFileSystemStorage(private val filePath: String = "secrets.json") : DidComSecretStorage {
+internal class SecretResolverFileSystemStorage(private val filePath: String = "secrets.json") : DidCommSecretStorage {
     private val secrets: MutableMap<String, Secret>
 
     init {
@@ -30,7 +29,7 @@ class SecretResolverFileSystemStorage(private val filePath: String = "secrets.js
         }
     }
 
-    override fun insert(kid: String, secretJson: Map<String, Any>): DidComSecret {
+    override fun insert(kid: String, secretJson: Map<String, Any>): DidCommSecret {
         secrets[kid] = jwkToSecret(secretJson)
         save()
 
@@ -42,15 +41,15 @@ class SecretResolverFileSystemStorage(private val filePath: String = "secrets.js
         File(filePath).writeText(secretJson)
     }
 
-    private fun createAnonymousDidComSecret(id: String, secret: Map<String, @Contextual Any>): DidComSecret =
-        object : DidComSecret {
+    private fun createAnonymousDidComSecret(id: String, secret: Map<String, @Contextual Any>): DidCommSecret =
+        object : DidCommSecret {
             override val _id: String
                 get() = id
             override val secret: Map<String, Any>
                 get() = secret
         }
 
-    override fun findById(kid: String): DidComSecret {
+    override fun findById(kid: String): DidCommSecret {
         secrets[kid]?.let {
             return createAnonymousDidComSecret(kid, secretToJwk(it))
         }
@@ -62,5 +61,5 @@ class SecretResolverFileSystemStorage(private val filePath: String = "secrets.js
 
     override fun listIds(): List<String> = secrets.keys.toList()
 
-    override fun list(): List<DidComSecret> = secrets.entries.map { createAnonymousDidComSecret(it.key, secretToJwk(it.value)) }
+    override fun list(): List<DidCommSecret> = secrets.entries.map { createAnonymousDidComSecret(it.key, secretToJwk(it.value)) }
 }

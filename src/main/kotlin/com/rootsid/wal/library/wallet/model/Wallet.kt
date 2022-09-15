@@ -1,6 +1,7 @@
 package com.rootsid.wal.library.wallet.model
 
 import com.rootsid.wal.library.dlt.model.Did
+import java.io.Serializable
 
 /**
  * Wallet
@@ -11,7 +12,7 @@ import com.rootsid.wal.library.dlt.model.Did
  * @property issuedCredentials
  * @constructor Create empty Wallet
  */
-interface Wallet {
+interface Wallet: Serializable {
     val _id: String // name of the wallet
     val seed: String
     var dids: MutableList<Did>

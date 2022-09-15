@@ -1,4 +1,4 @@
-package com.rootsid.wal.library.didcom.storage
+package com.rootsid.wal.library.didcomm.storage
 
 import org.didcommx.didcomm.secret.Secret
 import org.didcommx.didcomm.secret.SecretResolverEditable
@@ -6,7 +6,7 @@ import org.didcommx.didcomm.secret.jwkToSecret
 import org.didcommx.didcomm.secret.secretToJwk
 import java.util.*
 
-class SecretResolverCustom(private val didComSecretStorage: DidComSecretStorage = SecretResolverFileSystemStorage()) :
+class SecretResolverCustom(private val didComSecretStorage: DidCommSecretStorage = SecretResolverFileSystemStorage()) :
     SecretResolverEditable {
 
     override fun addKey(secret: Secret) {
