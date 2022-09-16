@@ -10,13 +10,14 @@ import kotlinx.serialization.Serializable
  * @property url to open the transaction on a blockchain explorer
  * @constructor Create empty Blockchain tx log
  */
-@Serializable
-data class BlockchainTxLogEntry(
-    val txId: String,
-    val action: BlockchainTxAction,
-    val url: String,
-    val description: String?
-)
+//@Serializable
+//data class BlockchainTxLogEntry(
+//    val operationId: String,
+//    val action: BlockchainTxAction,
+//    var description: String?,
+//    var txId: String? = "",
+//    var url: String? = ""
+//)
 
 // Enum for blockchain tx actions
 enum class BlockchainTxAction {

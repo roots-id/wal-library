@@ -10,7 +10,6 @@ import io.iohk.atala.prism.api.VerificationResult
 import io.iohk.atala.prism.api.models.AtalaOperationId
 import io.iohk.atala.prism.api.models.AtalaOperationInfo
 import io.iohk.atala.prism.api.models.AtalaOperationStatus
-import io.iohk.atala.prism.api.models.AtalaOperationStatusEnum
 import io.iohk.atala.prism.api.node.NodeAuthApiImpl
 import io.iohk.atala.prism.api.node.NodePayloadGenerator
 import io.iohk.atala.prism.api.node.NodePublicApi
@@ -48,32 +47,12 @@ class Dlt {
         return response.transactionId
     }
 
-    fun getDidPublishOperationInfo(did: Did): AtalaOperationStatusEnum {
-        val operationId = did.publishedOperationId
-        if ("" == operationId) {
+    fun getDidLastOperationInfo(did: Did): AtalaOperationInfo {
+        if (did.operationId.isEmpty()) {
             throw Exception("Unable to find operation information because operation id was empty.")
         }
-        val operationInfo = getOperationInfo(AtalaOperationId.fromHex(operationId))
-        operationInfo.transactionId?.let {
-            BlockchainTxLogEntry(
-                it,
-                BlockchainTxAction.PUBLISH_DID,
-                "${TESTNET_URL}$it",
-                did.alias
-            )
-        }
-        return operationInfo.status
-    }
-
-    /**
-     * Get operation information using the operationId
-     *
-     * @param operationId operation identifier
-     * @return operation information from the blockchain transaction
-     */
-    private fun getOperationInfo(operationId: AtalaOperationId): AtalaOperationInfo {
+        val operationId = AtalaOperationId.fromHex(did.operationId.last())
         val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
-
         return runBlocking { nodeAuthApi.getOperationInfo(operationId) }
     }
 
@@ -86,7 +65,7 @@ class Dlt {
      * @param description additional details
      * @return Log Entry containing details of the operation and the blockchain transaction
      */
-    private fun waitForSubmission(nodePublicApi: NodePublicApi, operationId: AtalaOperationId, action: BlockchainTxAction, description: String): BlockchainTxLogEntry {
+    private fun waitForSubmission(nodePublicApi: NodePublicApi, operationId: AtalaOperationId): String {
         var status = runBlocking {
             nodePublicApi.getOperationInfo(operationId).status
         }
@@ -97,9 +76,9 @@ class Dlt {
                 nodePublicApi.getOperationInfo(operationId).status
             }
         }
-        val tid = transactionId(operationId)
-        println("Track the transaction in:\n- ${Constant.TESTNET_URL}$tid\n")
-        return BlockchainTxLogEntry(tid, action, "${Constant.TESTNET_URL}$tid", description)
+        val txId = transactionId(operationId)
+        println("Track the transaction in:\n- ${Constant.TESTNET_URL}$txId\n")
+        return txId
     }
 
     /**
@@ -344,8 +323,8 @@ class Dlt {
                 PrismDid.DEFAULT_MASTER_KEY_ID
             )
         }
-        did.operationHash = createDidInfo.operationHash.hexValue
-        did.operationId = createDidOperationId.hexValue()
+        did.operationHash.add(createDidInfo.operationHash.hexValue)
+        did.operationId.add(createDidOperationId.hexValue())
 
         return did
     }
@@ -388,7 +367,7 @@ class Dlt {
             DidPublicKey(keyId, PublicKeyUsage.fromProto(keyUsage), newKeyPair.publicKey)
         )
         val updateDidInfo = nodePayloadGenerator.updateDid(
-            previousHash = Sha256Digest.fromHex(did.operationHash),
+            previousHash = Sha256Digest.fromHex(did.operationHash.last()),
             masterKeyId = PrismDid.DEFAULT_MASTER_KEY_ID,
             keysToAdd = arrayOf(newKeyInfo)
         )
@@ -397,14 +376,14 @@ class Dlt {
                 payload = updateDidInfo.payload,
                 did = PrismDid.fromString(did.uriCanonical).asCanonical(),
                 masterKeyId = PrismDid.DEFAULT_MASTER_KEY_ID,
-                previousOperationHash = Sha256Digest.fromHex(did.operationHash),
+                previousOperationHash = Sha256Digest.fromHex(did.operationHash.last()),
                 keysToAdd = arrayOf(newKeyInfo),
                 keysToRevoke = arrayOf()
             )
         }
-        did.operationHash = updateDidInfo.operationHash.hexValue
+        did.operationHash.add(updateDidInfo.operationHash.hexValue)
         did.keyPaths.add(newKeyPairData)
-        did.operationId = updateDidOperationId.hexValue()
+        did.operationId.add(updateDidOperationId.hexValue())
         return did
     }
 
@@ -430,7 +409,7 @@ class Dlt {
                 mapOf(PrismDid.DEFAULT_MASTER_KEY_ID to masterKeyPair.privateKey)
             )
             val updateDidInfo = nodePayloadGenerator.updateDid(
-                previousHash = Sha256Digest.fromHex(did.operationHash),
+                previousHash = Sha256Digest.fromHex(did.operationHash.last()),
                 masterKeyId = PrismDid.DEFAULT_MASTER_KEY_ID,
                 keysToRevoke = arrayOf(keyId)
             )
@@ -439,7 +418,7 @@ class Dlt {
                     payload = updateDidInfo.payload,
                     did = PrismDid.fromString(did.uriCanonical).asCanonical(),
                     masterKeyId = PrismDid.DEFAULT_MASTER_KEY_ID,
-                    previousOperationHash = Sha256Digest.fromHex(did.operationHash),
+                    previousOperationHash = Sha256Digest.fromHex(did.operationHash.last()),
                     keysToAdd = arrayOf(),
                     keysToRevoke = arrayOf(keyId)
                 )
@@ -447,8 +426,8 @@ class Dlt {
             // Key revocation flag
             keyPairList[0].revoked = true
             // Update DID last operation hash
-            did.operationHash = updateDidInfo.operationHash.hexValue
-            did.operationId = updateDidOperationId.hexValue()
+            did.operationHash.add(updateDidInfo.operationHash.hexValue)
+            did.operationId.add(updateDidOperationId.hexValue())
             return did
         } else {
             throw NoSuchElementException("Key identifier '$keyId' not found.")
@@ -498,7 +477,7 @@ class Dlt {
             )
         }
         // Update DID last operation hash
-        issuerDid.operationHash = credentialsInfo.operationHash.hexValue
+        issuerDid.operationHash.add(credentialsInfo.operationHash.hexValue)
         issuedCredential.operationId = issueCredentialsOperationId.hexValue()
         return Pair(issuerDid, issuedCredential)
     }
