@@ -30,7 +30,7 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
             throw RuntimeException("Duplicated Wallet identifier")
         }
 
-        val seed = generateSeed(mnemonic, passphrase)
+        val seed = this.generateSeed(mnemonic, passphrase)
         return walletStorage.insert(walletStorage.createWalletObject(id, BytesOps.bytesToHex(seed)))
     }
 
@@ -67,20 +67,15 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
      * @return seed
      */
     private fun generateSeed(mnemonic: String, passphrase: String): ByteArray {
-        val seed: ByteArray
-        val mnemonicList: MnemonicCode
-        if (mnemonic.trim().isBlank()) {
-            mnemonicList = MnemonicCode(KeyDerivation.randomMnemonicCode().words)
-            seed = KeyDerivation.binarySeed(mnemonicList, passphrase)
-        } else {
-            try {
-                mnemonicList = MnemonicCode(mnemonic.split(Constant.MNEMONIC_SEPARATOR).map { it.trim() })
-                seed = KeyDerivation.binarySeed(mnemonicList, passphrase)
-            } catch (e: Exception) {
-                throw RuntimeException("Invalid mnemonic phrase")
-            }
+        try {
+            val mnemonicList =
+                if (mnemonic.trim().isBlank()) MnemonicCode(KeyDerivation.randomMnemonicCode().words) else MnemonicCode(
+                    mnemonic.split(Constant.MNEMONIC_SEPARATOR).map { it.trim() })
+
+            return KeyDerivation.binarySeed(mnemonicList, passphrase)
+        } catch (e: Exception) {
+            throw RuntimeException("Invalid mnemonic phrase")
         }
-        return seed
     }
 
     /**
@@ -91,7 +86,7 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
      * @param issuer Add issuing and revocation keys, by default is false.
      */
     fun createDid(walletId: String, didAlias: String = UUID.randomUUID().toString(), issuer: Boolean = false): Did {
-        findWalletById(walletId)
+        this.findWalletById(walletId)
             .let { wallet ->
                 if (wallet.dids.any { it.alias.equals(didAlias, true) }) {
                     throw RuntimeException("Duplicated DID alias")
@@ -126,15 +121,17 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
      * @param didAlias Name of the alias, by default is random UUID.
      */
     fun publishDid(walletId: String, didAlias: String): Did {
-        findWalletById(walletId)
+        this.findWalletById(walletId)
             .let { wallet ->
                 wallet.dids.firstOrNull { it.alias.equals(didAlias, true) }
                     ?.let { did ->
                         val didUpdate = dlt.publishDid(did, BytesOps.hexToBytes(wallet.seed))
 
-                        // did.publishedStatus = AtalaOperationStatus.PENDING_SUBMISSION
-                        did.operationHash = didUpdate.operationHash ?: throw RuntimeException("Unable to find operation id.")
-                        did.operationId = didUpdate.operationId ?: throw RuntimeException("Unable to find operation id.")
+                        //did.publishedStatus = AtalaOperationStatus.PENDING_SUBMISSION
+                        did.operationHash =
+                            didUpdate.operationHash.ifBlank { throw RuntimeException("Unable to find operation id.") }
+                        did.operationId =
+                            didUpdate.operationId.ifBlank { throw RuntimeException("Unable to find operation id.") }
 
                         walletStorage.update(wallet)
                         txLogStorage.insert(
@@ -170,8 +167,8 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
         return dlt.getDidDocumentW3C(didUri)
     }
 
-    fun getDidLastOperationStatus(walletId: String, didAlias: String): AtalaOperationStatusEnum {
-        return getDidLastOperationStatus(findWalletById(walletId), didAlias)
+    fun getDidPublishOperationStatus(walletId: String, didAlias: String): AtalaOperationStatusEnum {
+        return this.getDidPublishOperationStatus(findWalletById(walletId), didAlias)
     }
 
     fun getDidLastOperationStatus(wallet: Wallet, didAlias: String): AtalaOperationStatusEnum {

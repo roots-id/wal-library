@@ -1,7 +1,8 @@
-package com.rootsid.wal.library.didcom
+package com.rootsid.wal.library.didcomm
 
-import com.rootsid.wal.library.didcom.model.UnpackResult
-import com.rootsid.wal.library.didcom.storage.SecretResolverCustom
+import com.rootsid.wal.library.didcomm.common.DidCommDataTypes
+import com.rootsid.wal.library.didcomm.model.UnpackResult
+import com.rootsid.wal.library.didcomm.storage.SecretResolverCustom
 import org.didcommx.didcomm.DIDComm
 import org.didcommx.didcomm.message.Message
 import org.didcommx.didcomm.model.PackEncryptedParams
@@ -18,10 +19,8 @@ import java.util.*
 
 class DIDPeer(private val secretResolver: SecretResolverEditable = SecretResolverCustom()) {
 
-    fun create(
-        authKeysCount: Int = 1, agreementKeysCount: Int = 1,
-        serviceEndpoint: String? = null, serviceRoutingKeys: List<String>
-    ): String {
+    fun create(serviceEndpoint: String? = null, authKeysCount: Int = 1, agreementKeysCount: Int = 1,
+               serviceRoutingKeys: List<String> = listOf()): String {
         // 1. generate keys in JWK format
         val x25519keyPairs = (1..agreementKeysCount).map { generateX25519Keys() }
         val ed25519keyPairs = (1..authKeysCount).map { generateEd25519Keys() }
@@ -50,7 +49,7 @@ class DIDPeer(private val secretResolver: SecretResolverEditable = SecretResolve
                     type = SERVICE_DIDCOMM_MESSAGING,
                     serviceEndpoint = it,
                     routingKeys = serviceRoutingKeys,
-                    accept = listOf("didcomm/v2")
+                    accept = listOf(DidCommDataTypes.ConnectionProtocol.DIDCOMM_2_0.value)
                 ).toDict()
             )
         }
@@ -64,7 +63,7 @@ class DIDPeer(private val secretResolver: SecretResolverEditable = SecretResolve
             createPeerDIDNumalgo2(signingKeys = authPublicKeys, encryptionKeys = agreemPublicKeys, service = service)
 
         // 5. set KIDs as in DID DOC for secrets and store the secret in the secrets resolver
-        val didDoc = DIDDocPeerDID.fromJson(resolve(did, VerificationMaterialFormatPeerDID.JWK))
+        val didDoc = DIDDocPeerDID.fromJson(this.resolve(did, VerificationMaterialFormatPeerDID.JWK))
         didDoc.agreementKids.zip(x25519keyPairs).forEach {
             val privateKey = it.second.private.toMutableMap()
             privateKey["kid"] = it.first
