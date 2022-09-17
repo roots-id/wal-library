@@ -129,9 +129,9 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
 
                         //did.publishedStatus = AtalaOperationStatus.PENDING_SUBMISSION
                         did.operationHash =
-                            didUpdate.operationHash.ifBlank { throw RuntimeException("Unable to find operation id.") }
+                            didUpdate.operationHash.ifEmpty { throw RuntimeException("Unable to find operation id.") }
                         did.operationId =
-                            didUpdate.operationId.ifBlank { throw RuntimeException("Unable to find operation id.") }
+                            didUpdate.operationId.ifEmpty { throw RuntimeException("Unable to find operation id.") }
 
                         walletStorage.update(wallet)
                         txLogStorage.insert(
@@ -168,7 +168,7 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
     }
 
     fun getDidPublishOperationStatus(walletId: String, didAlias: String): AtalaOperationStatusEnum {
-        return this.getDidPublishOperationStatus(findWalletById(walletId), didAlias)
+        return this.getDidLastOperationStatus(findWalletById(walletId), didAlias)
     }
 
     fun getDidLastOperationStatus(wallet: Wallet, didAlias: String): AtalaOperationStatusEnum {
