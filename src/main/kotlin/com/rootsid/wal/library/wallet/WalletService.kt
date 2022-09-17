@@ -3,10 +3,9 @@ package com.rootsid.wal.library.wallet
 import com.rootsid.wal.library.Constant
 import com.rootsid.wal.library.dlt.Dlt
 import com.rootsid.wal.library.dlt.model.Did
-import com.rootsid.wal.library.wallet.model.Wallet
-import com.rootsid.wal.library.wallet.model.addDid
+import com.rootsid.wal.library.wallet.model.*
+import com.rootsid.wal.library.wallet.storage.BlockchainTxLogStorage
 import com.rootsid.wal.library.wallet.storage.WalletStorage
-import io.iohk.atala.prism.api.models.AtalaOperationStatus
 import io.iohk.atala.prism.api.models.AtalaOperationStatusEnum
 import io.iohk.atala.prism.api.node.PrismDidState
 import io.iohk.atala.prism.common.PrismSdkInternal
@@ -17,7 +16,7 @@ import io.iohk.atala.prism.protos.DIDData
 import kotlinx.serialization.json.JsonObject
 import java.util.*
 
-class WalletService(private val walletStorage: WalletStorage, private val dlt: Dlt) {
+class WalletService(private val walletStorage: WalletStorage, private val txLogStorage: BlockchainTxLogStorage, private val dlt: Dlt) {
     /**
      * New wallet
      *
@@ -27,7 +26,7 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
      * @return a new wallet
      */
     fun createWallet(id: String, mnemonic: String, passphrase: String): Wallet {
-        if (walletStorage.exists(id)) {
+        if (walletStorage.exists(id) || txLogStorage.exists(id)) {
             throw RuntimeException("Duplicated Wallet identifier")
         }
 
@@ -88,15 +87,15 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
      */
     fun createDid(walletId: String, didAlias: String = UUID.randomUUID().toString(), issuer: Boolean = false): Did {
         this.findWalletById(walletId)
-            .let { w ->
-                if (w.dids.any { it.alias.equals(didAlias, true) }) {
+            .let { wallet ->
+                if (wallet.dids.any { it.alias.equals(didAlias, true) }) {
                     throw RuntimeException("Duplicated DID alias")
                 }
 
-                val newDid = dlt.newDid(didAlias, w.dids.size, BytesOps.hexToBytes(w.seed), issuer)
-                w.addDid(newDid)
+                val newDid = dlt.newDid(didAlias, wallet.dids.size, BytesOps.hexToBytes(wallet.seed), issuer)
+                wallet.addDid(newDid)
 
-                walletStorage.update(w)
+                walletStorage.update(wallet)
                 println("DID created")
 
                 return newDid
@@ -128,13 +127,21 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
                     ?.let { did ->
                         val didUpdate = dlt.publishDid(did, BytesOps.hexToBytes(wallet.seed))
 
-                        did.publishedStatus = AtalaOperationStatus.PENDING_SUBMISSION
+                        //did.publishedStatus = AtalaOperationStatus.PENDING_SUBMISSION
                         did.operationHash =
-                            didUpdate.operationHash.ifBlank { throw RuntimeException("Unable to find operation id.") }
+                            didUpdate.operationHash.ifEmpty { throw RuntimeException("Unable to find operation id.") }
                         did.operationId =
-                            didUpdate.operationId.ifBlank { throw RuntimeException("Unable to find operation id.") }
+                            didUpdate.operationId.ifEmpty { throw RuntimeException("Unable to find operation id.") }
 
                         walletStorage.update(wallet)
+                        txLogStorage.insert(
+                            txLogStorage.createTxLogObject(
+                                did.operationId.toString(),
+                                walletId,
+                                BlockchainTxAction.PUBLISH_DID,
+                                "Publish DID: $didAlias"
+                            )
+                        )
                         println("DID '$didAlias' published.")
 
                         return did
@@ -161,15 +168,19 @@ class WalletService(private val walletStorage: WalletStorage, private val dlt: D
     }
 
     fun getDidPublishOperationStatus(walletId: String, didAlias: String): AtalaOperationStatusEnum {
-        return this.getDidPublishOperationStatus(findWalletById(walletId), didAlias)
+        return this.getDidLastOperationStatus(findWalletById(walletId), didAlias)
     }
 
-    fun getDidPublishOperationStatus(wallet: Wallet, didAlias: String): AtalaOperationStatusEnum {
+    fun getDidLastOperationStatus(wallet: Wallet, didAlias: String): AtalaOperationStatusEnum {
         wallet.dids.firstOrNull { it.alias.equals(didAlias, true) }
-            ?.let { d ->
-                val publishOperationInfo = dlt.getDidPublishOperationInfo(d)
-                d.publishedStatus = publishOperationInfo
-                return publishOperationInfo
+            ?.let { did ->
+                val publishOperationInfo = dlt.getDidLastOperationInfo(did)
+                // did.publishedStatus = publishOperationInfo.status
+                return publishOperationInfo.status
             } ?: throw RuntimeException("Did alias '$didAlias' not found")
+    }
+
+    fun updateTxLogOperationInfo(operationId: String) {
+        // TODO: update txLog operation info
     }
 }

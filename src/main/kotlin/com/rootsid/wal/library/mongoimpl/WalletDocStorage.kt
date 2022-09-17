@@ -10,7 +10,6 @@ import com.rootsid.wal.library.wallet.storage.WalletStorage
 import org.litote.kmongo.*
 import java.util.*
 
-
 class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wallet") : WalletStorage {
     private val walletCollection: MongoCollection<WalletDocument>
 
@@ -82,7 +81,8 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
     override fun findDidByAlias(walletId: String, alias: String): Optional<Did> {
         return Optional.ofNullable(
             walletCollection.findOne("{_id:'$walletId','dids':{${MongoOperator.elemMatch}: {'alias':'$alias'}}}")
-                ?.dids?.firstOrNull { it.alias.equals(alias, true) })
+                ?.dids?.firstOrNull { it.alias.equals(alias, true) }
+        )
     }
 
     override fun listDids(walletId: String): List<Did> {
