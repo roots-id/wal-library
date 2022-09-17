@@ -10,7 +10,7 @@ import com.rootsid.wal.library.wallet.storage.BlockchainTxLogStorage
 import org.litote.kmongo.*
 import java.util.*
 
-class BlockchainTxLogDocStorage(db: MongoDatabase? = null, collectionName: String = "txLog") : BlockchainTxLogStorage {
+class BlockchainTxLogDocStorage(db: MongoDatabase? = null, collectionName: String = "tx_logs") : BlockchainTxLogStorage {
     private val txLogCollection: MongoCollection<BlockchainTxLogDocument>
 
     init {

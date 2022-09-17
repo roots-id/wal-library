@@ -1,8 +1,9 @@
 package com.rootsid.wal.library.wallet.model
 
 import io.iohk.atala.prism.api.models.AtalaOperationStatusEnum
+import java.io.Serializable
 
-interface BlockchainTxLog {
+interface BlockchainTxLog : Serializable {
     // use operationId as the primary key
     val _id: String
     val walletId: String

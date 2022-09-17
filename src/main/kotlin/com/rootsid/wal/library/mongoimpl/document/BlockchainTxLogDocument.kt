@@ -6,7 +6,6 @@ import io.iohk.atala.prism.api.models.AtalaOperationStatus
 import io.iohk.atala.prism.api.models.AtalaOperationStatusEnum
 import kotlinx.serialization.Serializable
 
-@Serializable
 data class BlockchainTxLogDocument(
     override val _id: String,
     override val walletId: String,
