@@ -1,8 +1,10 @@
 package com.rootsid.wal.library.mongoimpl.config
 
+import com.mongodb.MongoClientSettings
 import com.mongodb.client.MongoClient
 import com.mongodb.client.MongoDatabase
 import com.rootsid.wal.library.Constant
+import org.bson.UuidRepresentation
 import org.litote.kmongo.KMongo
 
 object DefaultMongoDbConn : MongoDbConn {
@@ -17,6 +19,11 @@ object DefaultMongoDbConn : MongoDbConn {
     }
 
     override fun getMongoClient(): MongoClient {
-        return KMongo.createClient()
+        return KMongo.createClient(
+            MongoClientSettings
+                .builder()
+                .uuidRepresentation(UuidRepresentation.STANDARD)
+                .build()
+        )
     }
 }

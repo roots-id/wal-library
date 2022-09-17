@@ -1,4 +1,4 @@
-package com.rootsid.wal.library.didcom
+package com.rootsid.wal.library.didcomm
 
 import org.didcommx.didcomm.common.VerificationMaterial
 import org.didcommx.didcomm.common.VerificationMaterialFormat
@@ -12,7 +12,7 @@ import org.didcommx.peerdid.DIDCommServicePeerDID
 import org.didcommx.peerdid.DIDDocPeerDID
 import org.didcommx.peerdid.VerificationMaterialFormatPeerDID
 import org.didcommx.peerdid.resolvePeerDID
-import java.util.Optional
+import java.util.*
 
 class DIDDocResolverPeerDID : DIDDocResolver {
 
