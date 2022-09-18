@@ -20,6 +20,7 @@ import io.iohk.atala.prism.crypto.EC
 import io.iohk.atala.prism.crypto.MerkleInclusionProof
 import io.iohk.atala.prism.crypto.Sha256Digest
 import io.iohk.atala.prism.crypto.keys.ECKeyPair
+import io.iohk.atala.prism.crypto.keys.ECPrivateKey
 import io.iohk.atala.prism.identity.*
 import io.iohk.atala.prism.protos.*
 import io.ipfs.multibase.Base58
@@ -30,9 +31,9 @@ import kotlinx.serialization.json.*
 import pbandk.ByteArr
 import pbandk.json.encodeToJsonString
 
-private const val TESTNET_URL = "https://explorer.cardano-testnet.iohkdev.io/en/transaction?id="
-
 class Dlt {
+    private val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
+
     /**
      * Use this function to get the blockchain transaction ID associated with an operationID
      * @param operationId operation identifier
@@ -47,13 +48,18 @@ class Dlt {
         return response.transactionId
     }
 
-    fun getDidLastOperationInfo(did: Did): AtalaOperationInfo {
-        if (did.operationId.isEmpty()) {
-            throw Exception("Unable to find operation information because operation id was empty.")
-        }
-        val operationId = AtalaOperationId.fromHex(did.operationId.last())
-        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
-        return runBlocking { nodeAuthApi.getOperationInfo(operationId) }
+//    fun getDidLastOperationInfo(did: Did): AtalaOperationInfo {
+//        if (did.operationId.isEmpty()) {
+//            throw Exception("Unable to find operation information because operation id was empty.")
+//        }
+//        val operationId = AtalaOperationId.fromHex(did.operationId.last())
+//        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
+//        return runBlocking { nodeAuthApi.getOperationInfo(operationId) }
+//    }
+
+    fun getOperationInfo(operationId: String): AtalaOperationInfo {
+//        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
+        return runBlocking { nodeAuthApi.getOperationInfo(AtalaOperationId.fromHex(operationId)) }
     }
 
     /**
@@ -124,6 +130,20 @@ class Dlt {
         } else {
             throw NoSuchElementException("Key ID '$keyId' not found.")
         }
+    }
+
+    @OptIn(PrismSdkInternal::class)
+    private fun privateKeyMap(keyPaths: MutableList<KeyPath>, seed: ByteArray): Map<String, ECPrivateKey> {
+        val keyMap = mutableMapOf<String, ECPrivateKey>()
+        keyPaths.forEach {
+            keyMap[it.keyId] = KeyGenerator.deriveKeyFromFullPath(
+                seed,
+                it.didIdx,
+                PublicKeyUsage.fromProto(KeyUsage.fromValue(it.keyTypeValue)),
+                it.keyIdx
+            ).privateKey
+        }
+        return keyMap
     }
 
     /**
@@ -302,18 +322,10 @@ class Dlt {
     fun publishDid(did: Did, seed: ByteArray): Did {
         val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
         val prismDid = PrismDid.fromString(did.uriLongForm)
-        // Key pairs to get private keys
-        val masterKeyPair = deriveKeyPair(did.keyPaths, seed, PrismDid.DEFAULT_MASTER_KEY_ID)
-        val issuingKeyPair = deriveKeyPair(did.keyPaths, seed, PrismDid.DEFAULT_ISSUING_KEY_ID)
-        val revocationKeyPair = deriveKeyPair(did.keyPaths, seed, PrismDid.DEFAULT_REVOCATION_KEY_ID)
-        // TODO: refactor to allow publishing of DIDs with other key pairs arrangements (e.g. with no revocation key, multiple master keys, etc.)
+
         val nodePayloadGenerator = NodePayloadGenerator(
             prismDid as LongFormPrismDid,
-            mapOf(
-                PrismDid.DEFAULT_MASTER_KEY_ID to masterKeyPair.privateKey,
-                PrismDid.DEFAULT_ISSUING_KEY_ID to issuingKeyPair.privateKey,
-                PrismDid.DEFAULT_REVOCATION_KEY_ID to revocationKeyPair.privateKey
-            )
+            privateKeyMap(did.keyPaths, seed)
         )
         val createDidInfo = nodePayloadGenerator.createDid()
         val createDidOperationId = runBlocking {

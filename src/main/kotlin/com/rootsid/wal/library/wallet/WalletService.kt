@@ -14,6 +14,7 @@ import io.iohk.atala.prism.crypto.derivation.MnemonicCode
 import io.iohk.atala.prism.crypto.util.BytesOps
 import io.iohk.atala.prism.protos.DIDData
 import kotlinx.serialization.json.JsonObject
+import java.time.LocalDateTime
 import java.util.*
 
 class WalletService(private val walletStorage: WalletStorage, private val txLogStorage: BlockchainTxLogStorage, private val dlt: Dlt) {
@@ -70,7 +71,8 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
         try {
             val mnemonicList =
                 if (mnemonic.trim().isBlank()) MnemonicCode(KeyDerivation.randomMnemonicCode().words) else MnemonicCode(
-                    mnemonic.split(Constant.MNEMONIC_SEPARATOR).map { it.trim() })
+                    mnemonic.split(Constant.MNEMONIC_SEPARATOR).map { it.trim() }
+                )
 
             return KeyDerivation.binarySeed(mnemonicList, passphrase)
         } catch (e: Exception) {
@@ -127,22 +129,22 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
                     ?.let { did ->
                         val didUpdate = dlt.publishDid(did, BytesOps.hexToBytes(wallet.seed))
 
-                        //did.publishedStatus = AtalaOperationStatus.PENDING_SUBMISSION
+                        // did.publishedStatus = AtalaOperationStatus.PENDING_SUBMISSION
                         did.operationHash =
-                            didUpdate.operationHash.ifEmpty { throw RuntimeException("Unable to find operation id.") }
+                            didUpdate.operationHash.ifEmpty { throw RuntimeException("Unable to find operation hash.") }
                         did.operationId =
                             didUpdate.operationId.ifEmpty { throw RuntimeException("Unable to find operation id.") }
 
                         walletStorage.update(wallet)
                         txLogStorage.insert(
                             txLogStorage.createTxLogObject(
-                                did.operationId.toString(),
+                                did.operationId.last().toString(),
                                 walletId,
                                 BlockchainTxAction.PUBLISH_DID,
                                 "Publish DID: $didAlias"
                             )
                         )
-                        println("DID '$didAlias' published.")
+                        println("DID '$didAlias' publish operation added.")
 
                         return did
                     }
@@ -167,20 +169,45 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
         return dlt.getDidDocumentW3C(didUri)
     }
 
-    fun getDidPublishOperationStatus(walletId: String, didAlias: String): AtalaOperationStatusEnum {
-        return this.getDidLastOperationStatus(findWalletById(walletId), didAlias)
+//    fun getDidPublishOperationStatus(walletId: String, didAlias: String): AtalaOperationStatusEnum {
+//        return this.getDidLastOperationStatus(findWalletById(walletId), didAlias)
+//    }
+
+    fun getDidLastOperationStatus(walletId: String, didAlias: String): AtalaOperationStatusEnum {
+        this.findWalletById(walletId)
+            .let { wallet ->
+                wallet.dids.firstOrNull { it.alias.equals(didAlias, true) }
+                    ?.let { did ->
+                        if (did.operationId.isEmpty()) {
+                            throw Exception("Unable to find operation information because operation id was empty.")
+                        }
+                        return dlt.getOperationInfo(did.operationId.last()).status
+                    } ?: throw RuntimeException("Did alias '$didAlias' not found")
+            }
     }
 
-    fun getDidLastOperationStatus(wallet: Wallet, didAlias: String): AtalaOperationStatusEnum {
-        wallet.dids.firstOrNull { it.alias.equals(didAlias, true) }
-            ?.let { did ->
-                val publishOperationInfo = dlt.getDidLastOperationInfo(did)
-                // did.publishedStatus = publishOperationInfo.status
-                return publishOperationInfo.status
-            } ?: throw RuntimeException("Did alias '$didAlias' not found")
+    private fun refreshTxLogOperationInfo(operationId: String): BlockchainTxLog {
+        val txLog = txLogStorage.findById(operationId)
+        val operationInfo = dlt.getOperationInfo(operationId)
+
+        txLog.status = operationInfo.status
+        txLog.txId = operationInfo.transactionId
+        txLog.url = Constant.TESTNET_URL + operationInfo.transactionId
+        txLog.updatedAt = LocalDateTime.now().toString()
+        txLogStorage.update(txLog)
+
+        return txLog
     }
 
-    fun updateTxLogOperationInfo(operationId: String) {
-        // TODO: update txLog operation info
+    /**
+     * Refresh tx logs
+     * Updates the status of all operations that are in [AtalaOperationStatus.PENDING_SUBMISSION] or [AtalaOperationStatus.PENDING_CONFIRMATION]
+     * Status
+     */
+    fun refreshTxLogs() {
+        txLogStorage.listPending().forEach() {
+            println("Refreshing operation ${it._id}")
+            refreshTxLogOperationInfo(it._id)
+        }
     }
 }

@@ -11,9 +11,9 @@ data class BlockchainTxLogDocument(
     override val walletId: String,
     override val action: BlockchainTxAction,
     override var description: String? = null,
+    override val createdAt: String,
+    override var updatedAt: String,
     override var status: AtalaOperationStatusEnum = AtalaOperationStatus.PENDING_SUBMISSION,
     override var txId: String? = null,
     override var url: String? = null
-    // val walletId: String
-    // override var logEntries: MutableList<BlockchainTxLogEntry> = mutableListOf()
 ) : BlockchainTxLog

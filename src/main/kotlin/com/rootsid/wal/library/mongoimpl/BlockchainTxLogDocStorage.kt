@@ -7,7 +7,9 @@ import com.rootsid.wal.library.mongoimpl.document.BlockchainTxLogDocument
 import com.rootsid.wal.library.wallet.model.BlockchainTxAction
 import com.rootsid.wal.library.wallet.model.BlockchainTxLog
 import com.rootsid.wal.library.wallet.storage.BlockchainTxLogStorage
+import io.iohk.atala.prism.api.models.AtalaOperationStatus
 import org.litote.kmongo.*
+import java.time.LocalDateTime
 import java.util.*
 
 class BlockchainTxLogDocStorage(db: MongoDatabase? = null, collectionName: String = "tx_logs") : BlockchainTxLogStorage {
@@ -20,7 +22,8 @@ class BlockchainTxLogDocStorage(db: MongoDatabase? = null, collectionName: Strin
     }
 
     override fun createTxLogObject(txLogId: String, walletId: String, action: BlockchainTxAction, description: String?): BlockchainTxLog {
-        return BlockchainTxLogDocument(txLogId, walletId, action, description)
+        val now = LocalDateTime.now().toString()
+        return BlockchainTxLogDocument(txLogId, walletId, action, description, now, now)
     }
 
     override fun insert(txLog: BlockchainTxLog): BlockchainTxLog {
@@ -34,6 +37,11 @@ class BlockchainTxLogDocStorage(db: MongoDatabase? = null, collectionName: Strin
 
     override fun list(): List<BlockchainTxLog> {
         return txLogCollection.find().toList()
+    }
+
+    override fun listPending(): List<BlockchainTxLog> {
+        val pending = listOf(AtalaOperationStatus.AWAIT_CONFIRMATION, AtalaOperationStatus.PENDING_SUBMISSION)
+        return txLogCollection.find(BlockchainTxLog::status `in` pending).toList()
     }
 
     /**
