@@ -490,7 +490,8 @@ class Dlt {
         }
         // Update DID last operation hash
         issuerDid.operationHash.add(credentialsInfo.operationHash.hexValue)
-        issuedCredential.operationId = issueCredentialsOperationId.hexValue()
+        issuerDid.operationId.add(issueCredentialsOperationId.hexValue())
+        issuedCredential.operationId.add(issueCredentialsOperationId.hexValue())
         return Pair(issuerDid, issuedCredential)
     }
 
@@ -527,33 +528,25 @@ class Dlt {
                 arrayOf(Sha256Digest.fromHex(credential.credentialHash))
             )
         }
-        credential.revoked = true
-        credential.operationId = revokeOperationId.hexValue()
+        issuerDid.operationHash.add(revokeInfo.operationHash.hexValue)
+        issuerDid.operationId.add(revokeOperationId.hexValue())
+        credential.operationId.add(revokeOperationId.hexValue())
         return Pair(issuerDid, credential)
     }
 
     /**
-     * Verify issued credential
+     * Verify credential
      *
-     * @param wallet Wallet containing the credential
-     * @param credentialAlias Alias of Credential to verify
      * @return Verification result
      */
-    fun verifyIssuedCredential(wallet: Wallet, credentialAlias: String): List<String> {
-        val credentials = wallet.issuedCredentials.filter { it.alias == credentialAlias }
-        if (credentials.isNotEmpty()) {
-            val credential = credentials[0]
-            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
-            val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
-            // Use encodeDefaults to generate empty siblings field on proof
-            val format = Json { encodeDefaults = true }
-            val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
+    fun verifyCredential(credential: Credential): List<String> {
+        val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
+        // Use encodeDefaults to generate empty siblings field on proof
+        val format = Json { encodeDefaults = true }
+        val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
 
-            return runBlocking {
-                nodeAuthApi.verify(signed, proof).toMessageArray()
-            }
-        } else {
-            throw Exception("Credential '$credentialAlias' not found.")
+        return runBlocking {
+            nodeAuthApi.verify(signed, proof).toMessageArray()
         }
     }
 
@@ -563,31 +556,6 @@ class Dlt {
             messages.add(message.errorMessage)
         }
         return messages
-    }
-
-    /**
-     * Verify imported credential
-     *
-     * @param wallet Wallet containing the credential
-     * @param credentialAlias Alias of credential to verify
-     * @return Verification result
-     */
-    fun verifyImportedCredential(wallet: Wallet, credentialAlias: String): List<String> {
-        val credentials = wallet.importedCredentials.filter { it.alias == credentialAlias }
-        if (credentials.isNotEmpty()) {
-            val credential = credentials[0]
-            val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
-            val signed = JsonBasedCredential.fromString(credential.verifiedCredential.encodedSignedCredential)
-            // Use encodeDefaults to generate empty siblings field on proof
-            val format = Json { encodeDefaults = true }
-            val proof = MerkleInclusionProof.decode(format.encodeToString(credential.verifiedCredential.proof))
-
-            return runBlocking {
-                nodeAuthApi.verify(signed, proof).toMessageArray()
-            }
-        } else {
-            throw Exception("Credential '$credentialAlias' not found.")
-        }
     }
 
     /**

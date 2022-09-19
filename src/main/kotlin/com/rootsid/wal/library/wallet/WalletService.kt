@@ -2,7 +2,10 @@ package com.rootsid.wal.library.wallet
 
 import com.rootsid.wal.library.Constant
 import com.rootsid.wal.library.dlt.Dlt
+import com.rootsid.wal.library.dlt.model.Claim
 import com.rootsid.wal.library.dlt.model.Did
+import com.rootsid.wal.library.dlt.model.Proof
+import com.rootsid.wal.library.dlt.model.VerifiedCredential
 import com.rootsid.wal.library.wallet.model.*
 import com.rootsid.wal.library.wallet.storage.BlockchainTxLogStorage
 import com.rootsid.wal.library.wallet.storage.WalletStorage
@@ -172,6 +175,75 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
 //    fun getDidPublishOperationStatus(walletId: String, didAlias: String): AtalaOperationStatusEnum {
 //        return this.getDidLastOperationStatus(findWalletById(walletId), didAlias)
 //    }
+
+    fun issueCredential(walletId: String, didAlias: String, holderUri: String, credentialAlias: String, content: String): IssuedCredential {
+        this.findWalletById(walletId)
+            .let { wallet ->
+                wallet.dids.firstOrNull { it.alias.equals(didAlias, true) }
+                    ?.let { did ->
+                        var issuedCredential = IssuedCredential(
+                            credentialAlias,
+                            didAlias,
+                            Claim(holderUri, content),
+                            VerifiedCredential("", Proof("", 0, mutableListOf())),
+                            "",
+                            mutableListOf(),
+                            "",
+                            ""
+                        )
+                        dlt.issueCredential(did, BytesOps.hexToBytes(wallet.seed), issuedCredential)
+                        wallet.issuedCredentials.add(issuedCredential)
+                        walletStorage.update(wallet)
+
+                        txLogStorage.insert(
+                            txLogStorage.createTxLogObject(
+                                did.operationId.last().toString(),
+                                walletId,
+                                BlockchainTxAction.ISSUE_CREDENTIAL,
+                                "Issue Credential: $credentialAlias"
+                            )
+                        )
+                        return issuedCredential
+                    }
+                    ?: throw RuntimeException("Did alias '$didAlias' not found")
+            }
+    }
+
+    fun revokeCredential(walletId: String, credentialAlias: String): IssuedCredential {
+        this.findWalletById(walletId)
+            .let { wallet ->
+                wallet.issuedCredentials.firstOrNull { it.alias.equals(credentialAlias, true) }
+                    ?.let { credential ->
+                        wallet.dids.firstOrNull { it.alias.equals(credential.issuingDidAlias, true) }
+                            ?.let { did ->
+                                dlt.revokeCredential(credential, did, BytesOps.hexToBytes(wallet.seed))
+                                walletStorage.update(wallet)
+                                txLogStorage.insert(
+                                    txLogStorage.createTxLogObject(
+                                        did.operationId.last().toString(),
+                                        walletId,
+                                        BlockchainTxAction.REVOKE_CREDENTIAL,
+                                        "Revoke Credential: $credentialAlias"
+                                    )
+                                )
+                                return credential
+                            }
+                            ?: throw RuntimeException("Did alias '${credential.issuingDidAlias}' not found")
+                    }
+                    ?: throw RuntimeException("Credential alias '$credentialAlias' not found")
+            }
+    }
+
+    fun verifyCredential(walletId: String, credentialAlias: String): List<String> {
+        this.findWalletById(walletId)
+            .let { wallet ->
+                wallet.issuedCredentials.firstOrNull { it.alias.equals(credentialAlias, true) }
+                    ?.let { credential ->
+                        return dlt.verifyCredential(credential)
+                    }
+                    ?: throw RuntimeException("Credential alias '$credentialAlias' not found")
+            }
+    }
 
     fun getDidLastOperationStatus(walletId: String, didAlias: String): AtalaOperationStatusEnum {
         this.findWalletById(walletId)
