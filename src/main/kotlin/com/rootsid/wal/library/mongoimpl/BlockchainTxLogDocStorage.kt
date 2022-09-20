@@ -22,7 +22,7 @@ class BlockchainTxLogDocStorage(db: MongoDatabase? = null, collectionName: Strin
     }
 
     override fun createTxLogObject(txLogId: String, walletId: String, action: BlockchainTxAction, description: String?): BlockchainTxLog {
-        val now = LocalDateTime.now().toString()
+        val now = LocalDateTime.now()
         return BlockchainTxLogDocument(txLogId, walletId, action, description, now, now)
     }
 

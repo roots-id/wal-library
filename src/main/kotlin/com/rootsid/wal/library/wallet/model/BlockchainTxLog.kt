@@ -2,6 +2,7 @@ package com.rootsid.wal.library.wallet.model
 
 import io.iohk.atala.prism.api.models.AtalaOperationStatusEnum
 import java.io.Serializable
+import java.time.LocalDateTime
 
 interface BlockchainTxLog : Serializable {
     // use operationId as the primary key
@@ -9,8 +10,8 @@ interface BlockchainTxLog : Serializable {
     val walletId: String
     val action: BlockchainTxAction
     var status: AtalaOperationStatusEnum
-    val createdAt: String
-    var updatedAt: String
+    val createdAt: LocalDateTime
+    var updatedAt: LocalDateTime
     var description: String?
     var txId: String?
     var url: String?

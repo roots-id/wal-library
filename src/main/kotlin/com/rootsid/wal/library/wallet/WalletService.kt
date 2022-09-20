@@ -265,7 +265,7 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
         txLog.status = operationInfo.status
         txLog.txId = operationInfo.transactionId
         txLog.url = Constant.TESTNET_URL + operationInfo.transactionId
-        txLog.updatedAt = LocalDateTime.now().toString()
+        txLog.updatedAt = LocalDateTime.now()
         txLogStorage.update(txLog)
 
         return txLog
