@@ -30,7 +30,7 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
      * @return a new wallet
      */
     fun createWallet(id: String, mnemonic: String, passphrase: String): Wallet {
-        if (walletStorage.exists(id) || txLogStorage.exists(id)) {
+        if (walletStorage.exists(id)) {
             throw RuntimeException("Duplicated Wallet identifier")
         }
 
