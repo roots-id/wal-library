@@ -19,19 +19,18 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class IssuedCredential(
-    val alias: String,
+    override val alias: String,
     var issuingDidAlias: String,
     // Plain json claim
     val claim: Claim,
     // Signed VC and proof (This is the real VC)
-    var verifiedCredential: VerifiedCredential,
+    override var verifiedCredential: VerifiedCredential,
     // Required for revocation
     var batchId: String,
     // To retrieve the operation status from the node
-    var operationId: String?,
+    var operationId: MutableList<String>,
     // Required for revocation
     var credentialHash: String,
     // Required for revocation
-    var operationHash: String,
-    var revoked: Boolean
-)
+    var operationHash: String
+) : Credential

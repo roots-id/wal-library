@@ -13,6 +13,8 @@ interface BlockchainTxLogStorage {
 
     fun list(): List<BlockchainTxLog>
 
+    fun listPending(): List<BlockchainTxLog>
+
     fun update(txLog: BlockchainTxLog): Boolean
 
     fun findById(txLogId: String): BlockchainTxLog
