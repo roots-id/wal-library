@@ -19,8 +19,10 @@ import java.util.*
 
 class DIDPeer(private val secretResolver: SecretResolverEditable = SecretResolverCustom()) {
 
-    fun create(serviceEndpoint: String? = null, authKeysCount: Int = 1, agreementKeysCount: Int = 1,
-               serviceRoutingKeys: List<String> = listOf()): String {
+    fun create(
+        serviceEndpoint: String? = null, authKeysCount: Int = 1, agreementKeysCount: Int = 1,
+        serviceRoutingKeys: List<String> = listOf()
+    ): String {
         // 1. generate keys in JWK format
         val x25519keyPairs = (1..agreementKeysCount).map { generateX25519Keys() }
         val ed25519keyPairs = (1..authKeysCount).map { generateEd25519Keys() }
@@ -86,12 +88,24 @@ class DIDPeer(private val secretResolver: SecretResolverEditable = SecretResolve
         signFrom: String? = null,
         protectSender: Boolean = true
     ): PackEncryptedResult {
-        val didComm = DIDComm(DIDDocResolverPeerDID(), secretResolver)
         val message = Message.builder(
             id = UUID.randomUUID().toString(),
             body = mapOf("msg" to data),
             type = "my-protocol/1.0"
         ).build()
+
+        return pack(message = message, to = to, from = from, signFrom = signFrom, protectSender = protectSender)
+    }
+
+    fun pack(
+        message: Message,
+        to: String,
+        from: String? = null,
+        signFrom: String? = null,
+        protectSender: Boolean = true
+    ): PackEncryptedResult {
+        val didComm = DIDComm(DIDDocResolverPeerDID(), secretResolver)
+
         var builder = PackEncryptedParams
             .builder(message, to)
             .forward(false)
