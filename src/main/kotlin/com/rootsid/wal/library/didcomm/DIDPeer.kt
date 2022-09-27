@@ -94,7 +94,7 @@ class DIDPeer(private val secretResolver: SecretResolverEditable = SecretResolve
             type = "my-protocol/1.0"
         ).build()
 
-        return pack(message = message, to = to, from = from, signFrom = signFrom, protectSender = protectSender)
+        return this.pack(message = message, to = to, from = from, signFrom = signFrom, protectSender = protectSender)
     }
 
     fun pack(
