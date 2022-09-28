@@ -9,7 +9,7 @@ import java.util.*
 
 data class DidCommConnectionDocument(
     override val alias: String,
-    override val invitationKey: String,
+    override val theirDid: String,
     override val accept: DidCommDataTypes.Accept = DidCommDataTypes.Accept.MANUAL,
     override val _id: String = UUID.randomUUID().toString(),
     override val myDid: String? = null,
