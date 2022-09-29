@@ -24,9 +24,9 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
     /**
      * New wallet
      *
-     * @param id Wallet name
-     * @param mnemonic mnemonic, leave empty to generate a random one
-     * @param passphrase passphrase
+     * @param id - Wallet is identified by a unique id
+     * @param mnemonic - mnemonic code to create the wallet seed. Leave empty to generate a random one
+     * @param passphrase - passphrase
      * @return a new wallet
      */
     fun createWallet(id: String, mnemonic: String, passphrase: String): Wallet {
@@ -40,15 +40,18 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
 
     /**
      * List wallets
+     *
+     * @return List<Wallet> - List of wallets
      */
     fun listWallets(): List<Wallet> {
         return walletStorage.list()
     }
 
     /**
-     * Get wallet by id
+     * Find wallet by id
      *
      * @param walletId Name of the wallet.
+     * @return Wallet - Wallet object
      */
     fun findWalletById(walletId: String): Wallet {
         return walletStorage.findById(walletId)
@@ -57,7 +60,7 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
     /**
      * Generate random mnemonic
      *
-     * @return mnemonic
+     * @return String - mnemonic
      */
     fun generateMnemonic(): String {
         return KeyDerivation.randomMnemonicCode().words.joinToString(Constant.MNEMONIC_SEPARATOR)
@@ -66,9 +69,9 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
     /**
      * Generate seed
      *
-     * @param mnemonic Mnemonic phrase, separated by Config.MNEMONIC_SEPARATOR. If empty, a random one will be generated
-     * @param passphrase Passphrase to protect the seed with a password
-     * @return seed
+     * @param mnemonic - Mnemonic phrase, separated by Config.MNEMONIC_SEPARATOR. If empty, a random one will be generated
+     * @param passphrase - Passphrase to protect the seed with a password
+     * @return ByteArray - Seed
      */
     private fun generateSeed(mnemonic: String, passphrase: String): ByteArray {
         try {
@@ -89,6 +92,7 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
      * @param walletId Name of the wallet.
      * @param didAlias Name of the alias, by default is random UUID.
      * @param issuer Add issuing and revocation keys, by default is false.
+     * @return Did - Did object
      */
     fun createDid(walletId: String, didAlias: String = UUID.randomUUID().toString(), issuer: Boolean = false): Did {
         this.findWalletById(walletId)
@@ -107,14 +111,34 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
             }
     }
 
+    /**
+     * List dids
+     *
+     * @param walletId - Identifier of the wallet.
+     * @return List<Did> - List of dids
+     */
     fun listDids(walletId: String): List<Did> {
         return walletStorage.listDids(walletId)
     }
 
+    /**
+     * Find did
+     *
+     * @param walletId - Identifier of the wallet.
+     * @param didAlias - Alias of the did.
+     * @return Did - Did object
+     */
     fun findDid(walletId: String, didAlias: String): Did {
         return walletStorage.findDidByAlias(walletId, didAlias).orElseThrow { Exception("Unable to find DID alias.") }
     }
 
+    /**
+     * Did alias exists
+     *
+     * @param walletId - Identifier of the wallet.
+     * @param didAlias - Alias of the did.
+     * @return Boolean - True if exists, false otherwise
+     */
     fun didAliasExists(walletId: String, didAlias: String): Boolean {
         return walletStorage.findDidByAlias(walletId, didAlias).isPresent
     }
@@ -122,8 +146,9 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
     /**
      * Publish did
      *
-     * @param walletId Name of the wallet.
-     * @param didAlias Name of the alias, by default is random UUID.
+     * @param walletId - Identifier of the wallet.
+     * @param didAlias - Alias of the did.
+     * @return Did - Did object
      */
     fun publishDid(walletId: String, didAlias: String): Did {
         this.findWalletById(walletId)
@@ -160,22 +185,46 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
         return dlt.getDidDocument(didUri)
     }
 
+    /**
+     * Get did document json. Returns the did document in json format.
+     *
+     * @param didUri
+     * @return
+     */
     fun getDidDocumentJson(didUri: String): String {
         return dlt.getDidDocumentJson(didUri)
     }
 
+    /**
+     * Get did document status. Returns the did document status.
+     *
+     * @param didUri - DID URI
+     * @return PrismDidState - DID state
+     */
     fun getDidDocumentStatus(didUri: String): PrismDidState {
         return dlt.getDidState(didUri)
     }
 
+    /**
+     * Get did document w3c. This method is used to get the did document in w3c format.
+     *
+     * @param didUri
+     * @return JsonObject DidDocument
+     */
     fun getDidDocumentW3C(didUri: String): JsonObject {
         return dlt.getDidDocumentW3C(didUri)
     }
 
-//    fun getDidPublishOperationStatus(walletId: String, didAlias: String): AtalaOperationStatusEnum {
-//        return this.getDidLastOperationStatus(findWalletById(walletId), didAlias)
-//    }
-
+    /**
+     * Issue credential. This method will create a new credential and publish it to the blockchain.
+     *
+     * @param walletId - Identifier of the wallet.
+     * @param didAlias - Alias of the did.
+     * @param holderUri - Holder URI.
+     * @param credentialAlias - Alias of the credential.
+     * @param content - Credential content.
+     * @return Credential - Credential object
+     */
     fun issueCredential(walletId: String, didAlias: String, holderUri: String, credentialAlias: String, content: String): IssuedCredential {
         this.findWalletById(walletId)
             .let { wallet ->
@@ -209,6 +258,13 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
             }
     }
 
+    /**
+     * Revoke credential. This method will revoke the credential and update the status of the credential.
+     *
+     * @param walletId - Identifier of the wallet.
+     * @param credentialAlias - Alias of the credential.
+     * @return Credential - Credential object
+     */
     fun revokeCredential(walletId: String, credentialAlias: String): IssuedCredential {
         this.findWalletById(walletId)
             .let { wallet ->
@@ -234,6 +290,13 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
             }
     }
 
+    /**
+     * Verify credential. This method will verify the credential with the prism node
+     *
+     * @param walletId - Identifier of the wallet.
+     * @param credentialAlias - Alias of the credential.
+     * @return List<String> - List of errors
+     */
     fun verifyCredential(walletId: String, credentialAlias: String): List<String> {
         this.findWalletById(walletId)
             .let { wallet ->
@@ -245,6 +308,13 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
             }
     }
 
+    /**
+     * Get did last operation status. This method will get the last operation status of the did.
+     *
+     * @param walletId - Identifier of the wallet.
+     * @param didAlias - Alias of the did.
+     * @return AtalaOperationStatus - Operation status
+     */
     fun getDidLastOperationStatus(walletId: String, didAlias: String): AtalaOperationStatusEnum {
         this.findWalletById(walletId)
             .let { wallet ->
@@ -258,6 +328,12 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
             }
     }
 
+    /**
+     * Refresh tx log operation info. This method will refresh the operation info of the given operation id in the log
+     *
+     * @param operationId - Operation id to refresh.
+     * @return BlockchainTxLog - Blockchain tx log
+     */
     private fun refreshTxLogOperationInfo(operationId: String): BlockchainTxLog {
         val txLog = txLogStorage.findById(operationId)
         val operationInfo = dlt.getOperationInfo(operationId)
@@ -272,9 +348,8 @@ class WalletService(private val walletStorage: WalletStorage, private val txLogS
     }
 
     /**
-     * Refresh tx logs
-     * Updates the status of all operations that are in [AtalaOperationStatus.PENDING_SUBMISSION] or [AtalaOperationStatus.PENDING_CONFIRMATION]
-     * Status
+     * Refresh tx logs - Updates the status of all operations that are in [AtalaOperationStatus.PENDING_SUBMISSION] or [AtalaOperationStatus.PENDING_CONFIRMATION]
+     *
      */
     fun refreshTxLogs() {
         txLogStorage.listPending().forEach() {

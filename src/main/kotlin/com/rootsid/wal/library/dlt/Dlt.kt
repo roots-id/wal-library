@@ -35,7 +35,7 @@ class Dlt {
     private val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
 
     /**
-     * Use this function to get the blockchain transaction ID associated with an operationID
+     * Use this function to get the blockchain transaction associated with an operationID
      * @param operationId operation identifier
      * @return blockchain Tx identifier
      */
@@ -48,17 +48,13 @@ class Dlt {
         return response.transactionId
     }
 
-//    fun getDidLastOperationInfo(did: Did): AtalaOperationInfo {
-//        if (did.operationId.isEmpty()) {
-//            throw Exception("Unable to find operation information because operation id was empty.")
-//        }
-//        val operationId = AtalaOperationId.fromHex(did.operationId.last())
-//        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
-//        return runBlocking { nodeAuthApi.getOperationInfo(operationId) }
-//    }
-
+    /**
+     * Get operation info. Returns the OperationInfo associated with an operationID
+     *
+     * @param operationId - operation identifier
+     * @return
+     */
     fun getOperationInfo(operationId: String): AtalaOperationInfo {
-//        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
         return runBlocking { nodeAuthApi.getOperationInfo(AtalaOperationId.fromHex(operationId)) }
     }
 
@@ -67,9 +63,7 @@ class Dlt {
      *
      * @param nodePublicApi PRISM node request handler
      * @param operationId operation Identifier
-     * @param action action associated with the operation (for traceability)
-     * @param description additional details
-     * @return Log Entry containing details of the operation and the blockchain transaction
+     * @return blockchain tx identifier
      */
     private fun waitForSubmission(nodePublicApi: NodePublicApi, operationId: AtalaOperationId): String {
         var status = runBlocking {
@@ -132,6 +126,13 @@ class Dlt {
         }
     }
 
+    /**
+     * Private key map. This map is used to store the private keys of the keys that are used to sign the operations
+     *
+     * @param keyPaths - List containing key path information
+     * @param seed - seed
+     * @return Map containing the private keys
+     */
     @OptIn(PrismSdkInternal::class)
     private fun privateKeyMap(keyPaths: MutableList<KeyPath>, seed: ByteArray): Map<String, ECPrivateKey> {
         val keyMap = mutableMapOf<String, ECPrivateKey>()
@@ -216,13 +217,12 @@ class Dlt {
     }
 
     /**
-     * Get did state
+     * Get did state from prism node.
      *
      * @param did did:prism string
      * @return DID state
      */
     fun getDidState(did: String): PrismDidState {
-        val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
         val prismDid = try {
             PrismDid.fromString(did)
         } catch (e: Exception) {
@@ -234,7 +234,7 @@ class Dlt {
     /**
      * Get did document
      *
-     * @param did did:prism string
+     * @param did did:prism URI
      * @return DID document
      */
     @OptIn(PrismSdkInternal::class)
@@ -254,7 +254,7 @@ class Dlt {
     }
 
     /**
-     * Get did document
+     * Get W3C compliant did document
      *
      * @param did a prism did
      * @return W3C compliant DID document in JsonObject
@@ -278,7 +278,7 @@ class Dlt {
         }
         val prismDoc = runBlocking { nodeAuthApi.getDidDocument(prismDid) }
 
-        var didDocW3C = mutableMapOf<String, JsonElement>(
+        var didDocW3C = mutableMapOf(
             "@context" to JsonArray(listOf(JsonPrimitive("https://www.w3.org/ns/did/v1"))),
             "id" to JsonPrimitive(did),
             "assertionMethod" to JsonArray(listOf(JsonPrimitive(did + "#master0")))
@@ -313,11 +313,12 @@ class Dlt {
     }
 
     /**
-     * Publish did
+     * Publish did.
+     * This will trigger a transaction to be sent to the blockchain.
      *
-     * @param did did to be published
-     * @param didAlias seed to generate the keys
-     * @return DltDidUpdate (operationId, Updated Did)
+     * @param did - did to be published
+     * @param seed - to generate the keys
+     * @return Did
      */
     fun publishDid(did: Did, seed: ByteArray): Did {
         val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
@@ -348,7 +349,7 @@ class Dlt {
      * @param seed seed to generate the keys
      * @param keyId key id
      * @param keyTypeValue key type
-     * @return DltDidUpdate (operationId, Updated Did)
+     * @return Did
      */
     @OptIn(PrismSdkInternal::class)
     fun addKey(did: Did, seed: ByteArray, keyId: String, keyTypeValue: Int): Did {
@@ -405,7 +406,7 @@ class Dlt {
      * @param did did containing the key to be revoked
      * @param seed seed to generate the keys
      * @param keyId key identifier to be revoked
-     * @return DltDidUpdate (operationId, Updated Did)
+     * @return Did
      */
     fun revokeKey(did: Did, seed: ByteArray, keyId: String): Did {
         val keyPairList = did.keyPaths.filter { it.keyId == keyId }
@@ -452,7 +453,7 @@ class Dlt {
      * @param issuerDid issuer did
      * @param seed seed to generate the keys
      * @param issuedCredential credential to be issued
-     * @return Pair updated did and updated issued credential
+     * @return Pair - updated did and updated issued credential
      */
     fun issueCredential(issuerDid: Did, seed: ByteArray, issuedCredential: IssuedCredential): Pair<Did, IssuedCredential> {
         val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
@@ -501,7 +502,7 @@ class Dlt {
      * @param credential credential to be revoked
      * @param issuerDid issuer did
      * @param seed seed to generate the keys
-     * @return DltDidUpdate (operationId, Updated Did)
+     * @return Pair<Did, IssuedCredential>
      */
     fun revokeCredential(credential: IssuedCredential, issuerDid: Did, seed: ByteArray): Pair<Did, IssuedCredential> {
         val nodeAuthApi = NodeAuthApiImpl(GrpcConfig.options())
@@ -560,7 +561,7 @@ class Dlt {
 
     /**
      * Grpc config
-     * Done this way to allow programmatic override of the grpc config
+     *
      * @constructor Create empty Grpc config
      */
     class GrpcConfig {

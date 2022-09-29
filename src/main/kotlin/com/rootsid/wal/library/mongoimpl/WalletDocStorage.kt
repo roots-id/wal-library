@@ -25,7 +25,7 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
      * Insert wallet
      *
      * @param wallet Wallet data object to add into the database
-     * @return true if the operation was acknowledged
+     * @return Wallet
      */
     override fun insert(wallet: Wallet): Wallet {
         val result = walletCollection.insertOne(wallet as WalletDocument)
@@ -51,7 +51,7 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
     /**
      * Find wallet
      *
-     * @param walletId name of the wallet to find
+     * @param walletId - Id of the wallet to find
      * @return wallet data object
      */
     override fun findById(walletId: String): Wallet {
@@ -70,7 +70,7 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
     /**
      * Wallet exists
      *
-     * @param walletId name of the wallet to find
+     * @param walletId - name of the wallet to find
      * @return true if the wallet was found
      */
     override fun exists(walletId: String): Boolean {
@@ -78,6 +78,13 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
         return wallet != null
     }
 
+    /**
+     * Find did by alias.
+     *
+     * @param walletId - name of the wallet to find
+     * @param alias - alias of the did to find
+     * @return Did
+     */
     override fun findDidByAlias(walletId: String, alias: String): Optional<Did> {
         return Optional.ofNullable(
             walletCollection.findOne("{_id:'$walletId','dids':{${MongoOperator.elemMatch}: {'alias':'$alias'}}}")
@@ -85,6 +92,12 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
         )
     }
 
+    /**
+     * List dids
+     *
+     * @param walletId - name of the wallet to get the dids from
+     * @return list of dids
+     */
     override fun listDids(walletId: String): List<Did> {
         return findById(walletId).dids
     }
@@ -92,8 +105,8 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
     /**
      * Did alias exists
      *
-     * @param walletId name of the wallet storing the did
-     * @param didAlias alias of the did
+     * @param walletId - name of the wallet storing the did
+     * @param didAlias - alias of the did
      * @return true if the did was found
      */
     fun didAliasExists(walletId: String, didAlias: String): Boolean {
@@ -104,9 +117,9 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
     /**
      * Key id exists
      *
-     * @param walletId name of the wallet storing the did
-     * @param didAlias alias of the did
-     * @param keyId key identifier
+     * @param walletId - name of the wallet storing the did
+     * @param didAlias - alias of the did
+     * @param keyId - key identifier
      * @return true if the keyId was found
      */
     fun keyIdExists(walletId: String, didAlias: String, keyId: String): Boolean {
@@ -117,20 +130,20 @@ class WalletDocStorage(db: MongoDatabase? = null, collectionName: String = "wall
 
     /**
      * Issued credential alias exists
-     *
-     * @param issuedCredentialAlias credential alias to find
+     * @param walletId - name of the wallet storing the credential
+     * @param issuedCredentialAlias - credential alias to find
      * @return true if the did was found
      */
-    fun issuedCredentialAliasExists(walletName: String, issuedCredentialAlias: String): Boolean {
+    fun issuedCredentialAliasExists(walletId: String, issuedCredentialAlias: String): Boolean {
         val wallet =
-            walletCollection.findOne("{_id:'$walletName','issuedCredentials':{${MongoOperator.elemMatch}: {'alias':'$issuedCredentialAlias'}}}")
+            walletCollection.findOne("{_id:'$walletId','issuedCredentials':{${MongoOperator.elemMatch}: {'alias':'$issuedCredentialAlias'}}}")
         return wallet != null
     }
 
     /**
      * Credential alias exists
-     *
-     * @param credentialAlias credential alias to find
+     * @param walletId - Id of the wallet storing the credential
+     * @param credentialAlias - credential alias to find
      * @return true if the did was found
      */
     fun credentialAliasExists(walletId: String, credentialAlias: String): Boolean {

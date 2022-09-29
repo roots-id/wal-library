@@ -9,8 +9,8 @@ import kotlinx.serialization.json.Json
 /**
  * Claim
  *
- * @property subjectDid
- * @property content
+ * @property subjectDid - Subject DID is the DID of the entity who is the subject of the claim.
+ * @property content - The claim content. This is a JSON string.
  * @constructor Create empty Claim
  */
 @Serializable

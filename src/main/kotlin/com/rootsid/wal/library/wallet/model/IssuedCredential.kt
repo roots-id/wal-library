@@ -9,28 +9,21 @@ import kotlinx.serialization.Serializable
  *
  * @property alias
  * @property issuingDidAlias
- * @property claim
- * @property verifiedCredential
- * @property batchId
- * @property credentialHash
- * @property operationHash
- * @property revoked
+ * @property claim - Plain json claim
+ * @property verifiedCredential - Signed VC and proof (This is the real VC)
+ * @property batchId - Required for revocation
+ * @property credentialHash - Required for revocation
+ * @property operationHash - To retrieve the operation status from the node
  * @constructor Create empty Credential
  */
 @Serializable
 data class IssuedCredential(
     override val alias: String,
     var issuingDidAlias: String,
-    // Plain json claim
     val claim: Claim,
-    // Signed VC and proof (This is the real VC)
     override var verifiedCredential: VerifiedCredential,
-    // Required for revocation
     var batchId: String,
-    // To retrieve the operation status from the node
     var operationId: MutableList<String>,
-    // Required for revocation
     var credentialHash: String,
-    // Required for revocation
     var operationHash: String
 ) : Credential
