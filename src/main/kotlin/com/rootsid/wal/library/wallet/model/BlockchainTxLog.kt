@@ -16,12 +16,3 @@ interface BlockchainTxLog : Serializable {
     var txId: String?
     var url: String?
 }
-
-/**
- * Add blockchain tx log
- *
- * @param entry blockchain transaction log entry
- */
-// fun BlockchainTxLog.addBlockchainTxLog(entry: BlockchainTxLogEntry) {
-//    logEntries.add(entry)
-// }

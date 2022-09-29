@@ -8,6 +8,20 @@ import io.iohk.atala.prism.api.models.AtalaOperationStatusEnum
 import kotlinx.serialization.Serializable
 import java.time.LocalDateTime
 
+/**
+ * Blockchain tx log document
+ *
+ * @property _id - unique id
+ * @property walletId - Id of the wallet associated with the record
+ * @property action - action performed on the wallet
+ * @property description - description of the action
+ * @property createdAt - date and time of the action
+ * @property updatedAt - date and time of the last update
+ * @property status - status of the action
+ * @property txId - blockchain transaction id
+ * @property url - url of the bloackchain transaction
+ * @constructor Create empty Blockchain tx log document
+ */
 data class BlockchainTxLogDocument(
     override val _id: String,
     override val walletId: String,

@@ -7,12 +7,11 @@ import kotlinx.serialization.Serializable
  * Imported credential
  *
  * @property alias
- * @property verifiedCredential
+ * @property verifiedCredential - Signed VC and proof (This is the real VC)
  * @constructor Create empty Imported credential
  */
 @Serializable
 data class ImportedCredential(
     override val alias: String,
-    // Signed VC and proof (This is the real VC)
     override var verifiedCredential: VerifiedCredential
 ) : Credential

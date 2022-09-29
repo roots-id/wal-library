@@ -5,8 +5,8 @@ import kotlinx.serialization.Serializable
 /**
  * Verified credential
  *
- * @property encodedSignedCredential
- * @property proof
+ * @property encodedSignedCredential - Base64 encoded signed credential
+ * @property proof - Merkle proof
  * @constructor Create empty Verified credential
  */
 @Serializable

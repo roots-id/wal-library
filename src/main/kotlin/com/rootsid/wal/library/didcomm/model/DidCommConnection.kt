@@ -4,7 +4,7 @@ import com.rootsid.wal.library.didcomm.common.DidCommDataTypes
 import java.io.Serializable
 import java.time.LocalDateTime
 
-interface DidCommConnection: Serializable {
+interface DidCommConnection : Serializable {
     val _id: String
     val invitationMsgId: String
     val invitationUrl: String?
@@ -20,6 +20,3 @@ interface DidCommConnection: Serializable {
     val createdAt: LocalDateTime
     val updatedAt: LocalDateTime
 }
-
-
-

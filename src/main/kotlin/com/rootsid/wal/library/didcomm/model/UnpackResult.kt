@@ -4,9 +4,9 @@ package com.rootsid.wal.library.didcomm.model
  * Unpack result
  *
  * @property message
- * @property from
- * @property to
- * @property res
+ * @property from - DID of sender
+ * @property to - DID of recipient
+ * @property res - unpack result
  * @constructor Create empty Unpack result
  */
 data class UnpackResult(

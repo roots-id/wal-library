@@ -1,18 +1,18 @@
 package com.rootsid.wal.library.dlt.model
 
-import io.iohk.atala.prism.api.models.AtalaOperationStatus
-import io.iohk.atala.prism.api.models.AtalaOperationStatusEnum
 import kotlinx.serialization.Serializable
 
 /**
- * D i d
+ * Did
  *
- * @property alias
- * @property didIdx
- * @property uriCanonical
- * @property uriLongForm
- * @property operationHash
- * @property keyPaths
+ * @property alias - alias of the DID
+ * @property didIdx - The index of the DID in the wallet. For deterministic DID creation
+ * @property uriCanonical - canonical uri, For public DIDs, this is the DID URI.
+ * @property uriLongForm - long form of the DID. For non-published DIDs
+ * @property keyPaths - A list of key paths for the DID
+ * @property operationId - Array of operation ids that have been performed on this DID.
+ * @property operationHash - Array of operation hashes that have been performed on this DID.
+
  * @constructor Create empty D i d
  */
 @Serializable
@@ -23,7 +23,5 @@ data class Did(
     val uriLongForm: String,
     var keyPaths: MutableList<KeyPath> = mutableListOf(),
     var operationId: MutableList<String> = mutableListOf(),
-    var operationHash: MutableList<String> = mutableListOf(),
-    // var publishedStatus: AtalaOperationStatusEnum = AtalaOperationStatus.UNKNOWN_OPERATION
-    // var publishedOperationId: String = ""
+    var operationHash: MutableList<String> = mutableListOf()
 )

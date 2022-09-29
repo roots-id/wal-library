@@ -3,7 +3,7 @@ package com.rootsid.wal.library.dlt.model
 import kotlinx.serialization.Serializable
 
 /**
- * Proof
+ * Proof - Credential Merkle Proof
  *
  * @property hash
  * @property index

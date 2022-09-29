@@ -20,6 +20,12 @@ class DidCommConnectionDocStorage(db: MongoDatabase? = null, collectionName: Str
         this.collection = mongoConn.getCollection<DidCommConnectionDocument>(collectionName)
     }
 
+    /**
+     * Insert
+     *
+     * @param conn - connection to be inserted
+     * @return DidCommConnection - inserted connection
+     */
     override fun insert(conn: DidCommConnection): DidCommConnection {
         val result = collection.insertOne(conn as DidCommConnectionDocument)
 
@@ -30,6 +36,12 @@ class DidCommConnectionDocStorage(db: MongoDatabase? = null, collectionName: Str
         throw RuntimeException("Failed inserting didcomm connection in storage.")
     }
 
+    /**
+     * Find by id
+     *
+     * @param id - id of connection to be found
+     * @return DidCommConnection - found connection
+     */
     override fun findById(id: String): DidCommConnection =
         collection.findOne(DidCommConnection::_id eq id) ?: throw Exception("DidComm connection '$id' not found.")
 
