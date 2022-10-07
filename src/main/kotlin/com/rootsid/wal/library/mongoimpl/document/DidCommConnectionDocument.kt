@@ -9,14 +9,14 @@ import java.util.*
 
 data class DidCommConnectionDocument(
     override val alias: String,
-    override val theirDid: String,
+    override val myDid: String,
     override val accept: DidCommDataTypes.Accept = DidCommDataTypes.Accept.MANUAL,
     override val _id: String = UUID.randomUUID().toString(),
-    override val myDid: String? = null,
     override val invitationMsgId: String = UUID.randomUUID().toString(),
     override val invitationUrl: String? = null,
     override val state: DidCommDataTypes.ConnectionState = DidCommDataTypes.ConnectionState.START,
     override val theirRole: DidCommDataTypes.TheirRole = DidCommDataTypes.TheirRole.INVITEE,
+    override val theirDid: String? = null,
     override val invitationMode: DidCommDataTypes.InvitationMode = DidCommDataTypes.InvitationMode.SIMPLE,
     override val connectionProtocol: DidCommDataTypes.ConnectionProtocol = DidCommDataTypes.ConnectionProtocol.DIDCOMM_2_0,
     override val routingState: DidCommDataTypes.RoutingState = DidCommDataTypes.RoutingState.NONE,

@@ -12,11 +12,11 @@ interface DidCommConnection : Serializable {
     val accept: DidCommDataTypes.Accept
     val state: DidCommDataTypes.ConnectionState
     val theirRole: DidCommDataTypes.TheirRole
-    val theirDid: String
+    val theirDid: String?
     val invitationMode: DidCommDataTypes.InvitationMode
     val connectionProtocol: DidCommDataTypes.ConnectionProtocol
     val routingState: DidCommDataTypes.RoutingState
-    val myDid: String?
+    val myDid: String
     val createdAt: LocalDateTime
     val updatedAt: LocalDateTime
 }
